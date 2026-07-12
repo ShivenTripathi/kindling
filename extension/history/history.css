@@ -1,0 +1,138 @@
+:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1c1b1a;
+  --fg-muted: #6b6560;
+  --border: #e7e2dd;
+  --accent: #c65d2e;
+  --surface: #f8f6f4;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1b1918;
+    --fg: #efeae5;
+    --fg-muted: #a79f97;
+    --border: #34302c;
+    --accent: #e08a5f;
+    --surface: #242220;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  max-width: 720px;
+  margin-inline: auto;
+}
+
+.topbar {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 17px;
+}
+
+main {
+  padding: 8px 24px 40px;
+}
+
+.state {
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.empty-title {
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+
+.empty-sub {
+  color: var(--fg-muted);
+  margin: 0;
+}
+
+.digest-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.digest {
+  padding: 20px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.digest-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.digest-date {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.digest-meta {
+  color: var(--fg-muted);
+  font-size: 12.5px;
+}
+
+.article-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.article-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-radius: 6px;
+}
+
+.article-title {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--fg);
+  text-decoration: none;
+}
+
+.article-title:hover {
+  text-decoration: underline;
+}
+
+.reopen-badge {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  border-radius: 999px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.footer {
+  padding: 16px 24px 32px;
+  color: var(--fg-muted);
+  font-size: 12px;
+}

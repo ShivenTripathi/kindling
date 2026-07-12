@@ -1,0 +1,9 @@
+{
+  "name": "com.kindling.host",
+  "description": "Kindling native-messaging host — runs the local extract/epub/send pipeline for the Kindling Chrome extension.",
+  "path": "__ABSOLUTE_PATH_TO_HOST_WRAPPER__",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://__EXTENSION_ID__/"
+  ]
+}

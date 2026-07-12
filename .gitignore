@@ -1,0 +1,12 @@
+node_modules/
+*.epub
+*.log
+.DS_Store
+dist/
+coverage/
+# Never commit user data or secrets
+*.session
+kindling-config.json
+ledger.json
+scratch/
+.claude/settings.local.json

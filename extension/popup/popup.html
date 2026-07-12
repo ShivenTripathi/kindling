@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Kindling</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">🔥</span>
+        <span class="brand-name">Kindling</span>
+      </div>
+      <a class="history-link" href="../history/history.html" target="_blank" rel="noopener">History</a>
+    </header>
+
+    <main id="main">
+      <div id="permission-banner" class="banner" hidden>
+        <p>
+          Enable rendered-page capture to grab the exact page you're looking at
+          (defeats paywalls, logins, and JS-only sites). Off by default; asked
+          for at runtime only, never at install.
+        </p>
+        <button id="enable-capture" class="btn btn-secondary" type="button">Enable</button>
+        <button id="dismiss-banner" class="btn btn-text" type="button">Not now</button>
+      </div>
+
+      <div id="loading" class="state">
+        <p>Checking your tabs…</p>
+      </div>
+
+      <div id="empty" class="state" hidden>
+        <p class="empty-title">No stale tabs right now.</p>
+        <p class="empty-sub">Kindling will badge the icon once tabs have been open past your threshold.</p>
+      </div>
+
+      <div id="list-view" hidden>
+        <div class="list-header">
+          <label class="select-all">
+            <input type="checkbox" id="select-all" checked />
+            <span id="select-all-label">Select all</span>
+          </label>
+          <span id="count-label" class="count-label"></span>
+        </div>
+
+        <ul id="tab-list" class="tab-list" role="list"></ul>
+      </div>
+
+      <div id="progress-view" class="state" hidden>
+        <p id="progress-message">Sending…</p>
+        <ul id="progress-log" class="progress-log"></ul>
+      </div>
+
+      <div id="result-view" class="state" hidden>
+        <p id="result-message"></p>
+        <ul id="result-log" class="result-log"></ul>
+        <button id="result-done" class="btn btn-secondary" type="button">Done</button>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <label class="toggle">
+        <input type="checkbox" id="close-after-send" />
+        <span>Close tabs after sending</span>
+      </label>
+      <button id="send-btn" class="btn btn-primary" type="button" disabled>Send to Kindle</button>
+    </footer>
+
+    <script src="popup.js" type="module"></script>
+  </body>
+</html>

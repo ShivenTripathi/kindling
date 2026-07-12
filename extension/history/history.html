@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Kindling — History</title>
+    <link rel="stylesheet" href="history.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">🔥</span>
+        <span class="brand-name">Kindling — History</span>
+      </div>
+    </header>
+
+    <main id="main">
+      <div id="loading" class="state">
+        <p>Loading history…</p>
+      </div>
+      <div id="empty" class="state" hidden>
+        <p class="empty-title">No digests sent yet.</p>
+        <p class="empty-sub">Once you send stale tabs, every digest and reopened article will show up here.</p>
+      </div>
+      <ul id="digest-list" class="digest-list" hidden></ul>
+    </main>
+
+    <footer class="footer">
+      <span class="legend"><span class="reopen-badge">↺ reopened</span> — you opened this URL again after it was sent.</span>
+    </footer>
+
+    <script src="history.js" type="module"></script>
+  </body>
+</html>
