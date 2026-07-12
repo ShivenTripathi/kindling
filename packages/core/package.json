@@ -1,0 +1,30 @@
+{
+  "name": "@kindling/core",
+  "version": "0.1.0",
+  "description": "Platform-agnostic core pipeline for Kindling: extraction, EPUB building, sending, ledger/insights, and the LLM router. Browser-safe (no Node- or browser-specific imports in this package's public surface).",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.js",
+    "./epub": "./src/epub/index.js",
+    "./extract": "./src/extract/index.js",
+    "./filter": "./src/filter.js",
+    "./ledger": "./src/ledger.js",
+    "./insights": "./src/insights/index.js",
+    "./send": "./src/send/index.js",
+    "./llm": "./src/llm/index.js",
+    "./ports": "./src/ports.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@mozilla/readability": "^0.6.0",
+    "defuddle": "^0.19.1",
+    "fflate": "^0.8.2"
+  },
+  "devDependencies": {
+    "jsdom": "^25.0.0",
+    "linkedom": "^0.18.13"
+  },
+  "license": "MIT"
+}

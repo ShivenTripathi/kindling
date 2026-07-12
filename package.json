@@ -9,11 +9,16 @@
   "engines": {
     "node": ">=20"
   },
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "start": "node src/cli.js",
     "test": "node --test 'test/**/*.test.js'",
-    "typecheck": "tsc --checkJs --noEmit --allowJs --skipLibCheck --target es2022 --module nodenext --moduleResolution nodenext src/*.js src/**/*.js",
-    "lint": "eslint src test",
+    "test:core": "node --test 'packages/core/test/**/*.test.js'",
+    "test:all": "node --test 'test/**/*.test.js' 'packages/core/test/**/*.test.js'",
+    "typecheck": "tsc --checkJs --noEmit --allowJs --skipLibCheck --target es2022 --module nodenext --moduleResolution nodenext src/*.js src/**/*.js packages/core/src/*.js packages/core/src/**/*.js",
+    "lint": "eslint src test packages",
     "format": "prettier --write ."
   },
   "keywords": [
