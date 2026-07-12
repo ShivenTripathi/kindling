@@ -17,7 +17,9 @@ const els = {
   allowList: $("allow-list"),
   disableWayback: $("disable-wayback"),
   llmProvider: $("llm-provider"),
+  llmGeminiNote: $("llm-gemini-note"),
   llmApiKey: $("llm-api-key"),
+  llmBaseUrlField: $("llm-base-url-field"),
   llmBaseUrl: $("llm-base-url"),
   llmModel: $("llm-model"),
   saveBtn: $("save-btn"),
@@ -26,6 +28,14 @@ const els = {
 };
 
 const DEFAULT_SCHEDULE_MINUTES = 360; // every 6h
+
+// Free-tier default model shown as a placeholder for Gemini (the recommended,
+// card-free provider); other providers just show their generic hint.
+const MODEL_PLACEHOLDER = {
+  gemini: "gemini-2.5-flash-lite",
+  anthropic: "claude-3-5-haiku-latest",
+  "openai-compatible": "gpt-4o-mini",
+};
 
 let config = null;
 
@@ -56,17 +66,26 @@ function populateForm(cfg) {
   els.disableWayback.checked = !!cfg.disableWayback;
 
   const llm = cfg.llm || {};
-  els.llmProvider.value = llm.provider || "anthropic";
+  els.llmProvider.value = llm.provider || "gemini";
   els.llmApiKey.value = llm.apiKey || "";
   els.llmBaseUrl.value = llm.baseUrl || "";
   els.llmModel.value = llm.model || "";
+  updateLlmFieldVisibility();
 }
 
 function updateScheduleFieldVisibility() {
   els.scheduleIntervalField.style.display = els.scheduleEnabled.checked ? "" : "none";
 }
 
+function updateLlmFieldVisibility() {
+  const provider = els.llmProvider.value;
+  els.llmBaseUrlField.style.display = provider === "openai-compatible" ? "" : "none";
+  els.llmGeminiNote.style.display = provider === "gemini" ? "" : "none";
+  els.llmModel.placeholder = MODEL_PLACEHOLDER[provider] || "";
+}
+
 els.scheduleEnabled.addEventListener("change", updateScheduleFieldVisibility);
+els.llmProvider.addEventListener("change", updateLlmFieldVisibility);
 
 els.reconnectGoogle.addEventListener("click", async () => {
   els.reconnectGoogle.disabled = true;
@@ -124,9 +143,15 @@ els.form.addEventListener("submit", async (e) => {
   }
 
   const apiKey = els.llmApiKey.value.trim();
+  const llmProvider = els.llmProvider.value;
+  if (apiKey && llmProvider === "openai-compatible" && !els.llmBaseUrl.value.trim()) {
+    showSaveError("The OpenAI-compatible provider needs a base URL (e.g. https://api.openai.com/v1).");
+    els.llmBaseUrl.focus();
+    return;
+  }
   const llm = apiKey
     ? {
-        provider: els.llmProvider.value,
+        provider: llmProvider,
         apiKey,
         baseUrl: els.llmBaseUrl.value.trim() || undefined,
         model: els.llmModel.value.trim() || undefined,

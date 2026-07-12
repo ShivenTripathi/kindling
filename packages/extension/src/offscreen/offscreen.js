@@ -7,7 +7,7 @@
 // context that can call chrome.scripting.executeScript).
 
 import { runDigest } from "@kindling/core";
-import { chromeStorage, loadConfig, makeGmailSender } from "../adapters.js";
+import { chromeStorage, loadConfig, makeGmailSender, makeLlmProvider } from "../adapters.js";
 
 const TAB_AGES_KEY = "tabAges";
 
@@ -39,6 +39,7 @@ async function runScheduledDigest() {
     content: makeProxiedContentSource(),
     sender: makeGmailSender(),
     storage: chromeStorage,
+    llm: makeLlmProvider(config),
   };
 
   return runDigest({ openTabs, ports, config });

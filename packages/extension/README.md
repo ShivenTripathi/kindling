@@ -57,8 +57,12 @@ OAuth client; end users never touch the Console.
 ## Cross-browser note
 
 `chrome.identity.getAuthToken` is Chrome-only. Edge/Brave work with the same
-client; Firefox (and a "bring-your-own client" path with no user cap) will use
-`chrome.identity.launchWebAuthFlow` instead — planned in Phase E.
+client. Firefox — and the **bring-your-own client** path (no user cap, for
+going past the shared client's ~100 users) — use `launchWebAuthFlow` instead:
+set your own Google OAuth client ID in Kindling's settings (`oauthClientId`) and
+Kindling switches to that flow automatically. (Implicit-grant tokens are short-
+lived and can't refresh silently, so an unattended scheduled send on that path
+may occasionally need a fresh consent.)
 
 ## Privacy
 

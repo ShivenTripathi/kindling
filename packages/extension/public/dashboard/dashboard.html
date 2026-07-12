@@ -87,6 +87,36 @@
           </section>
         </div>
 
+        <!-- AI: shown when config.llm has a key -->
+        <section class="panel ai-panel" id="ai-panel" aria-labelledby="ai-heading" hidden>
+          <h2 id="ai-heading">✨ Monthly reading digest</h2>
+          <p class="hint">
+            A short narrative connecting what you've read recently, generated
+            by the AI provider you configured — nothing leaves this device
+            except the request to that provider.
+          </p>
+          <button id="ai-generate-btn" class="btn btn-primary btn-sm" type="button">Generate</button>
+          <div id="ai-loading" class="ai-loading" hidden>Thinking…</div>
+          <div id="ai-error" class="ai-error" role="alert" hidden></div>
+          <div id="ai-result" class="ai-result" hidden>
+            <p id="ai-narrative" class="ai-narrative"></p>
+            <button id="ai-send-btn" class="btn btn-secondary btn-sm" type="button">
+              Send this digest to my Kindle
+            </button>
+            <span id="ai-send-status" class="ai-send-status" role="status"></span>
+          </div>
+        </section>
+
+        <!-- AI upsell: shown when no config.llm key is set -->
+        <section class="panel ai-upsell" id="ai-upsell" hidden>
+          <p>
+            ✨ Turn on free AI insights —
+            <button id="ai-upsell-link" class="link-btn-inline" type="button"
+              >connect a free Gemini key in Settings</button
+            >.
+          </p>
+        </section>
+
         <section class="panel" aria-labelledby="history-heading">
           <h2 id="history-heading">Digest history</h2>
           <ul id="digest-list" class="digest-list"></ul>

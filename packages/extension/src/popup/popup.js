@@ -5,6 +5,7 @@ import {
   chromeStorage,
   makeContentSource,
   makeGmailSender,
+  makeLlmProvider,
   getAuthToken,
   getAuthEmail,
   loadConfig,
@@ -321,6 +322,7 @@ async function onSend() {
     content: makeContentSource(),
     sender: makeGmailSender(),
     storage: chromeStorage,
+    llm: makeLlmProvider(config),
   };
 
   let report;

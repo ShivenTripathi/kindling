@@ -34,6 +34,7 @@
  * @property {string} [engine]      // which extractor won (diagnostic)
  * @property {number} [score]
  * @property {string} [source]      // 'dom-capture' | 'tier1' | 'tier2' | 'tier3'
+ * @property {string} [summary]     // optional AI summary (set by runDigest when an LLM is configured)
  */
 
 /**

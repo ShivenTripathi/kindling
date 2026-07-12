@@ -19,7 +19,7 @@
 
 /**
  * @typedef {Object} LlmConfig
- * @property {'anthropic'|'openai-compatible'} provider
+ * @property {'gemini'|'anthropic'|'openai-compatible'} provider
  * @property {string} apiKey
  * @property {string} [baseUrl]   // openai-compatible: OpenAI/OpenRouter/Ollama/LM Studio; required for that transport
  * @property {string} [model]
@@ -50,6 +50,16 @@ const DEFAULT_ANTHROPIC_MODEL = "claude-3-5-haiku-latest";
 const DEFAULT_OPENAI_COMPAT_MODEL = "gpt-4o-mini";
 const ANTHROPIC_VERSION = "2023-06-01";
 const DEFAULT_ANTHROPIC_BASE_URL = "https://api.anthropic.com";
+
+// Google AI Studio (Gemini) — the recommended FREE option. The flash-lite/flash
+// models are card-free on the free tier; a key comes from
+// https://aistudio.google.com/apikey. The Generative Language REST endpoint
+// accepts the key as a query param and permits browser-origin requests, so it
+// works directly from the extension (browserUsable: true). If the free-tier
+// rate limit is exceeded the API returns 429 — surfaced as a clear error rather
+// than silently costing anything.
+const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash-lite";
+const DEFAULT_GEMINI_BASE_URL = "https://generativelanguage.googleapis.com";
 
 // Cap input length before it's sent anywhere — keeps requests small/cheap and
 // bounds worst-case payload size regardless of how large an article is.
@@ -380,6 +390,9 @@ export function createProvider(config, deps = {}) {
 
   const fetchImpl = deps.fetchImpl || fetch;
 
+  if (config.provider === "gemini") {
+    return createGeminiProvider(config, fetchImpl);
+  }
   if (config.provider === "anthropic") {
     return createAnthropicProvider(config, fetchImpl);
   }
@@ -387,4 +400,64 @@ export function createProvider(config, deps = {}) {
     return createOpenAiCompatProvider(config, fetchImpl);
   }
   throw new Error(`Unknown llm provider: ${String(config.provider)}`);
+}
+
+// ---------------------------------------------------------------------------
+// Gemini transport (Google AI Studio free tier) — REST, fetch-based, browser-
+// safe. The recommended free option; nothing paid is required.
+
+/**
+ * @param {LlmConfig} config
+ * @param {typeof fetch} fetchImpl
+ * @returns {LlmProvider}
+ */
+function createGeminiProvider(config, fetchImpl) {
+  const baseUrl = (config.baseUrl || DEFAULT_GEMINI_BASE_URL).replace(/\/+$/, "");
+  const model = config.model || DEFAULT_GEMINI_MODEL;
+
+  /** @param {string} prompt @param {number} maxTokens */
+  async function complete(prompt, maxTokens) {
+    // The key rides in the query string per Google's REST API. NOTE: never put
+    // this URL in an error message — httpError() below only ever reads the
+    // response status/body, never the request URL, so the key can't leak.
+    const url = `${baseUrl}/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(config.apiKey)}`;
+    const body = JSON.stringify({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: { maxOutputTokens: maxTokens },
+    });
+    const json = await postJson("Gemini", fetchImpl, url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body,
+    });
+    const text = json?.candidates?.[0]?.content?.parts
+      ?.map((p) => p?.text ?? "")
+      .join("");
+    if (typeof text !== "string" || text.length === 0) {
+      throw new Error("Gemini request failed: unexpected response shape");
+    }
+    return text;
+  }
+
+  return {
+    async summarize(text, opts = {}) {
+      const maxWords = opts.maxWords ?? 120;
+      const out = await complete(PROMPTS.summarize(truncate(text), maxWords), MAX_TOKENS.summarize);
+      return out.trim();
+    },
+    async classify(text, opts = {}) {
+      const out = await complete(PROMPTS.classify(truncate(text), opts.taxonomy), MAX_TOKENS.classify);
+      return parseTagList(out);
+    },
+    async synthesize(items, opts = {}) {
+      const period = opts.period ?? "this month";
+      const capped = (items ?? []).slice(0, MAX_SYNTHESIZE_ITEMS).map((i) => ({
+        title: truncate(i.title, 200),
+        summary: truncate(i.summary, 600),
+      }));
+      const out = await complete(PROMPTS.synthesize(capped, period), MAX_TOKENS.synthesize);
+      return out.trim();
+    },
+    info: { provider: "gemini", model, browserUsable: true },
+  };
 }

@@ -21,6 +21,8 @@ import { normalizeUrl } from "./filter.js";
  * @property {string|null} digestId
  * @property {string[]} reopenedAt // ISO times the URL was seen open AFTER being sent
  * @property {boolean} closedByKindling
+ * @property {number} [wordCount]  // set at send time (for reading-time insights)
+ * @property {string} [summary]    // optional AI summary, set at send time
  */
 
 /**

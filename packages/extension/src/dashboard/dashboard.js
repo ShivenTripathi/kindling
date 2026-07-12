@@ -2,9 +2,16 @@
 // + chrome.*), computed entirely from the local ledger: no network calls, no
 // remote code (MV3 forbids it), no chart library — every visual here is
 // hand-built inline SVG/HTML.
-import { chromeStorage } from "../adapters.js";
+import { chromeStorage, loadConfig, makeLlmProvider, makeGmailSender } from "../adapters.js";
 import { computeInsights, tagTopics } from "@kindling/core/insights";
-import { aggregateTopics, formatReadingTime, RANGE_PRESETS, digestHistory } from "./topics.js";
+import { buildEpub } from "@kindling/core";
+import {
+  aggregateTopics,
+  formatReadingTime,
+  RANGE_PRESETS,
+  digestHistory,
+  summarizedItemsInRange,
+} from "./topics.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -23,17 +30,36 @@ const els = {
   sourcesList: $("sources-list"),
   topicsChips: $("topics-chips"),
   digestList: $("digest-list"),
+  aiPanel: $("ai-panel"),
+  aiUpsell: $("ai-upsell"),
+  aiUpsellLink: $("ai-upsell-link"),
+  aiGenerateBtn: $("ai-generate-btn"),
+  aiLoading: $("ai-loading"),
+  aiError: $("ai-error"),
+  aiResult: $("ai-result"),
+  aiNarrative: $("ai-narrative"),
+  aiSendBtn: $("ai-send-btn"),
+  aiSendStatus: $("ai-send-status"),
 };
 
 els.settingsLink.addEventListener("click", () => chrome.runtime.openOptionsPage());
+els.aiUpsellLink.addEventListener("click", () => chrome.runtime.openOptionsPage());
+els.aiGenerateBtn.addEventListener("click", onGenerateMonthlyDigest);
+els.aiSendBtn.addEventListener("click", onSendMonthlyDigest);
 
 let ledger = { tabs: {}, digests: [] };
 let currentRange = "month";
+let config = null;
+/** the last-generated narrative, kept around so "send to Kindle" can use it
+ * without re-calling the model. */
+let lastNarrative = "";
 
 init();
 
 async function init() {
   ledger = (await chromeStorage.get("ledger")) || { tabs: {}, digests: [] };
+  config = await loadConfig();
+  updateAiVisibility();
 
   const hasHistory = Object.keys(ledger.tabs ?? {}).length > 0 || (ledger.digests ?? []).length > 0;
   if (!hasHistory) {
@@ -207,6 +233,101 @@ function renderTopics() {
   }
 }
 
+// ---- AI: monthly reading digest --------------------------------------------
+// Optional, bring-your-own-key, local-only (see @kindling/core/llm). Shown
+// only when config.llm has a key; otherwise a gentle upsell links to Settings.
+
+function updateAiVisibility() {
+  const hasKey = !!(config && config.llm && config.llm.apiKey);
+  els.aiPanel.hidden = !hasKey;
+  els.aiUpsell.hidden = hasKey;
+}
+
+async function onGenerateMonthlyDigest() {
+  const llm = makeLlmProvider(config);
+  if (!llm) {
+    updateAiVisibility();
+    return;
+  }
+
+  els.aiError.hidden = true;
+  els.aiResult.hidden = true;
+  els.aiSendStatus.textContent = "";
+  els.aiGenerateBtn.disabled = true;
+  els.aiLoading.hidden = false;
+
+  try {
+    const rangeDays = RANGE_PRESETS[currentRange] ?? RANGE_PRESETS.month;
+    const items = summarizedItemsInRange(ledger, { now: new Date(), rangeDays });
+    if (items.length === 0) {
+      throw new Error(
+        "No summarized articles in this range yet — summaries are generated the next time you send a digest with AI insights on.",
+      );
+    }
+    const narrative = await llm.synthesize(items, { period: rangeLabel() });
+    lastNarrative = narrative;
+    els.aiNarrative.textContent = narrative;
+    els.aiResult.hidden = false;
+    els.aiSendBtn.disabled = false;
+    els.aiSendBtn.textContent = "Send this digest to my Kindle";
+  } catch (err) {
+    els.aiError.textContent = friendlyAiError(err);
+    els.aiError.hidden = false;
+  } finally {
+    els.aiLoading.hidden = true;
+    els.aiGenerateBtn.disabled = false;
+  }
+}
+
+function friendlyAiError(err) {
+  const msg = (err && err.message) || String(err);
+  if (/429|rate.?limit|quota/i.test(msg)) {
+    return "Try again — the free tier is busy right now.";
+  }
+  if (/network|fetch/i.test(msg)) {
+    return "A network error stopped the request. Check your connection and try again.";
+  }
+  return `Couldn't generate a digest: ${msg}`;
+}
+
+async function onSendMonthlyDigest() {
+  if (!lastNarrative || !config || !config.kindleEmail) {
+    els.aiSendStatus.textContent = config && config.kindleEmail ? "" : "Add a Kindle address in Settings first.";
+    return;
+  }
+
+  els.aiSendBtn.disabled = true;
+  els.aiSendBtn.textContent = "Sending…";
+  els.aiSendStatus.textContent = "";
+
+  try {
+    const period = rangeLabel();
+    const wordCount = lastNarrative.split(/\s+/).filter(Boolean).length;
+    const article = {
+      url: "kindling://monthly",
+      title: `Your reading — ${period}`,
+      contentHtml: `<p>${escapeHtml(lastNarrative).replace(/\n+/g, "</p><p>")}</p>`,
+      textContent: lastNarrative,
+      wordCount,
+    };
+    const built = await buildEpub([article], { title: "Your reading" });
+    const sender = makeGmailSender();
+    await sender.send({
+      to: config.kindleEmail,
+      from: config.senderEmail,
+      subject: `Your reading — ${period}`,
+      attachment: built.bytes,
+      attachmentName: "monthly-digest.epub",
+    });
+    els.aiSendStatus.textContent = "Sent to your Kindle.";
+  } catch (err) {
+    els.aiSendStatus.textContent = `Couldn't send: ${(err && err.message) || err}`;
+  } finally {
+    els.aiSendBtn.disabled = false;
+    els.aiSendBtn.textContent = "Send this digest to my Kindle";
+  }
+}
+
 // ---- Digest history --------------------------------------------------------
 
 function renderDigestHistory() {
@@ -244,14 +365,17 @@ function renderDigestHistory() {
     const urlList = document.createElement("ul");
     urlList.className = "digest-urls";
     for (const { url, reopened } of digest.urls) {
-      const row = document.createElement("li");
+      const record = ledger.tabs?.[url];
+      const item = document.createElement("li");
+
+      const row = document.createElement("div");
       row.className = "digest-url-row";
 
       const link = document.createElement("a");
       link.href = url;
       link.target = "_blank";
       link.rel = "noopener noreferrer";
-      link.textContent = ledger.tabs?.[url]?.title || url;
+      link.textContent = record?.title || url;
 
       row.appendChild(link);
       if (reopened) {
@@ -260,7 +384,17 @@ function renderDigestHistory() {
         badge.textContent = "↺ reopened";
         row.appendChild(badge);
       }
-      urlList.appendChild(row);
+      item.appendChild(row);
+
+      // AI summary, when one was generated at send time (config.llm was set).
+      if (record?.summary) {
+        const summaryP = document.createElement("p");
+        summaryP.className = "digest-url-summary";
+        summaryP.textContent = record.summary;
+        item.appendChild(summaryP);
+      }
+
+      urlList.appendChild(item);
     }
     details.appendChild(urlList);
     li.appendChild(details);

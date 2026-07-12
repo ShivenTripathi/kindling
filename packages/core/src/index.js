@@ -52,6 +52,7 @@ function digestId(date, suffixIndex) {
  *     clock?: import('./ports.js').Clock,
  *     dom?: {parseHtml:(html:string)=>any, serialize:(node:any)=>string},
  *     fetchImage?: (url:string)=>Promise<{bytes:Uint8Array,contentType:string}|null>,
+ *     llm?: import('./llm/index.js').LlmProvider,
  *   },
  *   config: {
  *     kindleEmail: string, senderEmail: string,
@@ -118,6 +119,25 @@ export async function runDigest(args) {
   }
   if (articles.length === 0) return report;
 
+  // Optional AI (Tier 3): if an LLM provider is supplied, summarize each article
+  // now — this is the only moment we have the full text. Stored on the ledger so
+  // the dashboard can show summaries + a monthly synthesis. Bring-your-own-key,
+  // local-only; a summarization failure never blocks the send.
+  if (ports.llm && typeof ports.llm.summarize === 'function') {
+    for (const article of articles) {
+      try {
+        article.summary = await ports.llm.summarize(article.textContent || article.contentHtml || '');
+      } catch {
+        /* summaries are best-effort; keep sending */
+      }
+    }
+  }
+
+  // Ensure a ledger tab record exists for every article being sent (the
+  // explicit-urls "send now" path may not have snapshotted them), so sentAt,
+  // summaries, and later reopen-tracking all have somewhere to attach.
+  ledger = recordSnapshot(ledger, articles.map((a) => ({ url: a.url, title: a.title })), now);
+
   // Build EPUB(s), respecting the 50MB Kindle email cap.
   const groups = splitForSizeLimit(articles);
   for (let i = 0; i < groups.length; i++) {
@@ -144,6 +164,15 @@ export async function runDigest(args) {
       { id, sentAt: now.toISOString(), articles: built.articleCount, sizeBytes: built.sizeBytes, urls },
       now,
     );
+    // Persist per-article summaries + word counts onto the ledger records so
+    // the dashboard (local, and the monthly AI synthesis) can use them.
+    for (const a of groups[i]) {
+      const rec = ledger.tabs[normalizeUrl(a.url)];
+      if (rec) {
+        if (typeof a.wordCount === 'number') rec.wordCount = a.wordCount;
+        if (a.summary) rec.summary = a.summary;
+      }
+    }
     report.sent.push(...urls);
     report.digests.push({ id, articles: built.articleCount, sizeBytes: built.sizeBytes, epubBytes: built.bytes });
   }

@@ -283,3 +283,21 @@ input[type="checkbox"] {
   color: var(--danger);
   font-size: 13px;
 }
+
+.llm-gemini-note {
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 16px;
+}
+
+.llm-gemini-note a {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.llm-gemini-note a:hover {
+  text-decoration: underline;
+}

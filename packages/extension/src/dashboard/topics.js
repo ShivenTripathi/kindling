@@ -43,6 +43,30 @@ export const RANGE_PRESETS = {
   // whole window, so cap it at a decade rather than passing Infinity.
 };
 
+/** Collect `{title, summary}` for every sent tab in the ledger whose
+ * `sentAt` falls within the last `rangeDays` (relative to `now`) and that has
+ * a stored `summary` (only present when an LLM provider was configured at
+ * send time — see `runDigest` in packages/core/src/index.js). Feeds the
+ * dashboard's "Monthly reading digest" synthesis; tabs without a summary are
+ * silently skipped rather than sent to the model empty-handed.
+ * @param {import('@kindling/core/ledger').Ledger} ledger
+ * @param {{now?:Date, rangeDays?:number}} [opts]
+ * @returns {{title:string, summary:string}[]}
+ */
+export function summarizedItemsInRange(ledger, opts = {}) {
+  const { now = new Date(), rangeDays = 30 } = opts;
+  const cutoff = now.getTime() - rangeDays * 86_400_000;
+  const tabs = ledger?.tabs ?? {};
+  const items = [];
+  for (const record of Object.values(tabs)) {
+    if (!record?.sentAt || !record.summary) continue;
+    const sentAt = new Date(record.sentAt).getTime();
+    if (Number.isNaN(sentAt) || sentAt < cutoff) continue;
+    items.push({ title: record.title || "", summary: record.summary });
+  }
+  return items;
+}
+
 /** Digests in reverse-chronological order (newest first), each annotated
  * with which of its urls were reopened after being sent (per the ledger's
  * tab record `reopenedAt`) — the "the tool worked" signal.

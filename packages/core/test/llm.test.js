@@ -303,3 +303,53 @@ describe("OpenAiCompatProvider", () => {
     );
   });
 });
+
+describe("Gemini transport (free tier)", () => {
+  test("returns null with no key", () => {
+    assert.equal(createProvider({ provider: "gemini", apiKey: "" }), null);
+  });
+
+  test("summarize: correct URL, model, body shape; parses response", async () => {
+    const { fetchImpl, calls } = stubFetch({
+      json: { candidates: [{ content: { parts: [{ text: "a summary" }] } }] },
+    });
+    const p = createProvider(
+      { provider: "gemini", apiKey: "AIza-secret-key" },
+      { fetchImpl },
+    );
+    assert.deepEqual(p.info, { provider: "gemini", model: "gemini-2.5-flash-lite", browserUsable: true });
+    const out = await p.summarize("some long article text");
+    assert.equal(out, "a summary");
+    const { url, init } = calls[0];
+    assert.match(url, /generativelanguage\.googleapis\.com\/v1beta\/models\/gemini-2\.5-flash-lite:generateContent\?key=/);
+    assert.equal(init.method, "POST");
+    const body = JSON.parse(init.body);
+    assert.equal(body.contents[0].parts[0].text.length > 0, true);
+    assert.equal(typeof body.generationConfig.maxOutputTokens, "number");
+  });
+
+  test("honors a custom model", async () => {
+    const { fetchImpl, calls } = stubFetch({
+      json: { candidates: [{ content: { parts: [{ text: "x" }] } }] },
+    });
+    const p = createProvider(
+      { provider: "gemini", apiKey: "k", model: "gemini-2.5-flash" },
+      { fetchImpl },
+    );
+    await p.summarize("t");
+    assert.match(calls[0].url, /models\/gemini-2\.5-flash:generateContent/);
+    assert.equal(p.info.model, "gemini-2.5-flash");
+  });
+
+  test("an error (e.g. 429 free-tier limit) never leaks the api key", async () => {
+    const { fetchImpl } = stubFetch({ status: 429, statusText: "Too Many Requests", text: "quota" });
+    const p = createProvider(
+      { provider: "gemini", apiKey: "AIza-SUPER-SECRET" },
+      { fetchImpl },
+    );
+    await assert.rejects(p.summarize("t"), (err) => {
+      assert.ok(!String(err.message).includes("AIza-SUPER-SECRET"), "key must not appear in the error");
+      return true;
+    });
+  });
+});

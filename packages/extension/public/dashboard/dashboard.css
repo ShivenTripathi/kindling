@@ -461,3 +461,123 @@ details[open] > .digest-summary::before {
   border-radius: 999px;
   white-space: nowrap;
 }
+
+.digest-url-summary {
+  margin: 2px 0 4px 0;
+  padding-left: 0;
+  color: var(--fg-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* AI panel */
+.ai-panel .hint {
+  margin: 0 0 12px;
+}
+
+.ai-loading {
+  color: var(--fg-muted);
+  font-size: 13px;
+  margin-top: 10px;
+}
+
+.ai-error {
+  color: var(--danger, #b3261e);
+  font-size: 13px;
+  margin-top: 10px;
+}
+
+.ai-result {
+  margin-top: 14px;
+}
+
+.ai-narrative {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  line-height: 1.6;
+  font-size: 13.5px;
+  margin: 0 0 12px;
+  white-space: pre-wrap;
+}
+
+.ai-send-status {
+  margin-left: 10px;
+  font-size: 12.5px;
+  color: var(--fg-muted);
+}
+
+/* AI upsell */
+.ai-upsell {
+  background: var(--accent-soft);
+  border-color: var(--accent-soft);
+}
+
+.ai-upsell p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--fg);
+}
+
+.link-btn-inline {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: inherit;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.link-btn-inline:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Buttons (shared with options.css visual language) */
+.btn {
+  border: none;
+  border-radius: 8px;
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.btn-sm {
+  padding: 7px 12px;
+  font-size: 12.5px;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+.btn-primary:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.btn-secondary {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--fg);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--surface-hover);
+}

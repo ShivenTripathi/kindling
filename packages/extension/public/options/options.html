@@ -90,28 +90,40 @@
         <section class="card">
           <h2>AI insights <span class="badge">optional, local-only</span></h2>
           <p class="hint">
-            Bring your own API key to get summaries and topic tags. The key
-            stays on this machine and is only used to call the endpoint you
-            choose below — Kindling has no server.
+            Bring your own API key to get article summaries and a monthly
+            reading digest. The key stays on this machine and is only used to
+            call the endpoint you choose below — Kindling has no server.
           </p>
           <div class="field">
             <label for="llm-provider">Provider</label>
             <select id="llm-provider">
-              <option value="anthropic">Anthropic</option>
-              <option value="openai-compatible">OpenAI-compatible (OpenAI, OpenRouter, Ollama, LM Studio…)</option>
+              <option value="gemini">Gemini (free — recommended)</option>
+              <option value="anthropic">Anthropic (paid)</option>
+              <option value="openai-compatible">OpenAI-compatible (OpenAI / OpenRouter / local Ollama · LM Studio)</option>
             </select>
           </div>
+          <p id="llm-gemini-note" class="hint llm-gemini-note">
+            <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer"
+              >Get a free key → aistudio.google.com/apikey</a
+            ><br />
+            Free tier, no card. Your key stays on this device and is only used to call Google directly.
+          </p>
           <div class="field">
             <label for="llm-api-key">API key</label>
-            <input id="llm-api-key" type="password" autocomplete="off" placeholder="sk-…" />
+            <input id="llm-api-key" type="password" autocomplete="off" placeholder="paste your key" />
           </div>
-          <div class="field">
-            <label for="llm-base-url">Base URL <span class="optional">(optional)</span></label>
-            <input id="llm-base-url" type="text" placeholder="https://api.anthropic.com" />
+          <div class="field" id="llm-base-url-field">
+            <label for="llm-base-url">Base URL</label>
+            <input id="llm-base-url" type="text" placeholder="https://api.openai.com/v1" />
+            <p class="hint">
+              OpenAI: <code>https://api.openai.com/v1</code> · OpenRouter:
+              <code>https://openrouter.ai/api/v1</code> · Ollama:
+              <code>http://localhost:11434/v1</code>
+            </p>
           </div>
           <div class="field">
             <label for="llm-model">Model <span class="optional">(optional)</span></label>
-            <input id="llm-model" type="text" placeholder="claude-sonnet-4-5" />
+            <input id="llm-model" type="text" placeholder="gemini-2.5-flash-lite" />
           </div>
         </section>
 
