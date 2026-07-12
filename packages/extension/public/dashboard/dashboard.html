@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kindling — your reading</title>
+    <link rel="stylesheet" href="dashboard.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">🔥</span>
+        <span class="brand-name">Your reading</span>
+      </div>
+      <button id="settings-link" class="link-btn" type="button">Settings</button>
+    </header>
+
+    <main id="main">
+      <!-- EMPTY STATE -->
+      <section id="empty-view" class="empty-state" hidden>
+        <p class="empty-title">Your reading insights will appear here once you've sent a few digests.</p>
+        <p class="empty-sub">
+          Kindling tracks what you send, what you actually reopen, and how much
+          reading time you've shipped to your Kindle — all computed locally,
+          right here in this page.
+        </p>
+      </section>
+
+      <!-- DASHBOARD -->
+      <div id="dashboard-view" hidden>
+        <nav class="range-selector" role="tablist" aria-label="Time range">
+          <button class="range-btn" data-range="week" role="tab" type="button">This week</button>
+          <button class="range-btn" data-range="month" role="tab" type="button" aria-selected="true">This month</button>
+          <button class="range-btn" data-range="all" role="tab" type="button">All time</button>
+        </nav>
+
+        <section class="stat-grid" aria-label="Reading stats">
+          <div class="stat-tile">
+            <span class="stat-label">Backlog</span>
+            <span id="stat-backlog" class="stat-value">0</span>
+            <span class="stat-sub">open 48h+, not sent</span>
+          </div>
+          <div class="stat-tile">
+            <span class="stat-label">Sent</span>
+            <span id="stat-sent" class="stat-value">0</span>
+            <span id="stat-sent-sub" class="stat-sub">in range</span>
+          </div>
+          <div class="stat-tile">
+            <span class="stat-label-row">
+              <span class="stat-label">Actually read</span>
+              <span class="tooltip-wrap">
+                <button type="button" class="info-dot" aria-describedby="reopen-tip">?</button>
+                <span id="reopen-tip" class="tooltip" role="tooltip">
+                  Share of sent articles you reopened afterward
+                </span>
+              </span>
+            </span>
+            <span id="stat-reopen" class="stat-value">0%</span>
+            <span class="stat-sub">reopened after sending</span>
+          </div>
+          <div class="stat-tile">
+            <span class="stat-label">Reading time shipped</span>
+            <span id="stat-minutes" class="stat-value">0m</span>
+            <span class="stat-sub">estimated</span>
+          </div>
+          <div class="stat-tile">
+            <span class="stat-label">Streak</span>
+            <span id="stat-streak" class="stat-value">0</span>
+            <span class="stat-sub">consecutive days sending</span>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="volume-heading">
+          <h2 id="volume-heading">Sending volume</h2>
+          <div id="volume-chart-wrap"></div>
+        </section>
+
+        <div class="panel-row">
+          <section class="panel panel-half" aria-labelledby="sources-heading">
+            <h2 id="sources-heading">Top sources</h2>
+            <div id="sources-list"></div>
+          </section>
+
+          <section class="panel panel-half" aria-labelledby="topics-heading">
+            <h2 id="topics-heading">Topics</h2>
+            <div id="topics-chips"></div>
+          </section>
+        </div>
+
+        <section class="panel" aria-labelledby="history-heading">
+          <h2 id="history-heading">Digest history</h2>
+          <ul id="digest-list" class="digest-list"></ul>
+        </section>
+      </div>
+    </main>
+
+    <script type="module" src="dashboard.js"></script>
+  </body>
+</html>

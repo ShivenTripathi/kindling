@@ -68,6 +68,12 @@ code {
   flex-shrink: 0;
 }
 
+.topbar-links {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
 .brand {
   display: flex;
   align-items: center;

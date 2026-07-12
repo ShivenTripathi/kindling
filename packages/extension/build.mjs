@@ -17,6 +17,7 @@ const ENTRIES = [
   { in: "src/popup/popup.js", out: "popup/popup", format: "esm" },
   { in: "src/options/options.js", out: "options/options", format: "esm" },
   { in: "src/offscreen/offscreen.js", out: "offscreen/offscreen", format: "esm" },
+  { in: "src/dashboard/dashboard.js", out: "dashboard/dashboard", format: "esm" },
   // Injected into pages to run extraction on the live DOM; must be a self-
   // contained classic script exposing window.__kindlingExtract.
   { in: "src/content-extract.js", out: "content-extract", format: "iife" },

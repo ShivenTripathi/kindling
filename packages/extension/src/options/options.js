@@ -4,6 +4,7 @@ import { getAuthToken, getAuthEmail, loadConfig, saveConfig } from "../adapters.
 const $ = (id) => document.getElementById(id);
 
 const els = {
+  dashboardLink: $("dashboard-link"),
   form: $("settings-form"),
   kindleEmail: $("kindle-email"),
   senderEmail: $("sender-email"),
@@ -27,6 +28,10 @@ const els = {
 const DEFAULT_SCHEDULE_MINUTES = 360; // every 6h
 
 let config = null;
+
+els.dashboardLink.addEventListener("click", () =>
+  chrome.tabs.create({ url: chrome.runtime.getURL("dashboard/dashboard.html") }),
+);
 
 init();
 

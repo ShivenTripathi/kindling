@@ -19,6 +19,7 @@ const $ = (id) => document.getElementById(id);
 
 const els = {
   settingsLink: $("settings-link"),
+  dashboardLink: $("dashboard-link"),
 
   onboarding: $("onboarding-view"),
   obKindleEmail: $("ob-kindle-email"),
@@ -52,6 +53,9 @@ let tabs = [];
 let config = null;
 
 els.settingsLink.addEventListener("click", () => chrome.runtime.openOptionsPage());
+els.dashboardLink.addEventListener("click", () =>
+  chrome.tabs.create({ url: chrome.runtime.getURL("dashboard/dashboard.html") }),
+);
 
 // ---------------------------------------------------------------------------
 // Boot
