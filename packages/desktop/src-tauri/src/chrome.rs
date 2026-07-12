@@ -67,10 +67,38 @@ pub fn list_chrome_profiles() -> Result<Vec<Profile>, String> {
     Ok(profiles)
 }
 
+/// Reject any profile id that could escape the Chrome root: no path separators,
+/// no `..` traversal, no absolute paths, no empty/dot names. This command is
+/// NOT covered by the fs-plugin capability scope, so it must validate its own
+/// path input or a malicious webview could read arbitrary files.
+fn validate_profile_id(profile_id: &str) -> Result<(), String> {
+    if profile_id.is_empty()
+        || profile_id == "."
+        || profile_id == ".."
+        || profile_id.contains('/')
+        || profile_id.contains('\\')
+        || profile_id.contains("..")
+        || std::path::Path::new(profile_id).is_absolute()
+    {
+        return Err(format!("invalid profile id: {profile_id}"));
+    }
+    Ok(())
+}
+
 #[tauri::command]
 pub fn newest_session_bytes(profile_id: String) -> Result<Vec<u8>, String> {
+    validate_profile_id(&profile_id)?;
     let root = chrome_root()?;
     let sessions_dir = root.join(&profile_id).join("Sessions");
+
+    // Defense in depth: after canonicalizing, the Sessions dir must still live
+    // directly under the Chrome root (blocks symlink escapes too).
+    if let (Ok(canon_sessions), Ok(canon_root)) = (sessions_dir.canonicalize(), root.canonicalize())
+    {
+        if !canon_sessions.starts_with(&canon_root) {
+            return Err("refusing to read outside the Chrome profile directory".to_string());
+        }
+    }
 
     let entries = fs::read_dir(&sessions_dir).map_err(|e| {
         format!(
@@ -102,12 +130,8 @@ pub fn newest_session_bytes(profile_id: String) -> Result<Vec<u8>, String> {
         }
     }
 
-    let (newest_path, _) = newest.ok_or_else(|| {
-        format!(
-            "no Session_* files found in {}",
-            sessions_dir.display()
-        )
-    })?;
+    let (newest_path, _) =
+        newest.ok_or_else(|| format!("no Session_* files found in {}", sessions_dir.display()))?;
 
     fs::read(&newest_path).map_err(|e| format!("could not read {}: {e}", newest_path.display()))
 }

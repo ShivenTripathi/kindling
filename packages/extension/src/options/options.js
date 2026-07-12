@@ -1,5 +1,10 @@
 // Kindling options page — settings bound to config via loadConfig/saveConfig.
-import { getAuthToken, getAuthEmail, loadConfig, saveConfig } from "../adapters.js";
+import {
+  getAuthToken,
+  getAuthEmail,
+  loadConfig,
+  saveConfig,
+} from "../adapters.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -40,7 +45,9 @@ const MODEL_PLACEHOLDER = {
 let config = null;
 
 els.dashboardLink.addEventListener("click", () =>
-  chrome.tabs.create({ url: chrome.runtime.getURL("dashboard/dashboard.html") }),
+  chrome.tabs.create({
+    url: chrome.runtime.getURL("dashboard/dashboard.html"),
+  }),
 );
 
 init();
@@ -74,12 +81,15 @@ function populateForm(cfg) {
 }
 
 function updateScheduleFieldVisibility() {
-  els.scheduleIntervalField.style.display = els.scheduleEnabled.checked ? "" : "none";
+  els.scheduleIntervalField.style.display = els.scheduleEnabled.checked
+    ? ""
+    : "none";
 }
 
 function updateLlmFieldVisibility() {
   const provider = els.llmProvider.value;
-  els.llmBaseUrlField.style.display = provider === "openai-compatible" ? "" : "none";
+  els.llmBaseUrlField.style.display =
+    provider === "openai-compatible" ? "" : "none";
   els.llmGeminiNote.style.display = provider === "gemini" ? "" : "none";
   els.llmModel.placeholder = MODEL_PLACEHOLDER[provider] || "";
 }
@@ -122,7 +132,9 @@ els.form.addEventListener("submit", async (e) => {
 
   const kindleEmail = els.kindleEmail.value.trim().toLowerCase();
   if (kindleEmail && !isValidKindleEmail(kindleEmail)) {
-    showSaveError("The Kindle address should end in kindle.com or free.kindle.com.");
+    showSaveError(
+      "The Kindle address should end in kindle.com or free.kindle.com.",
+    );
     els.kindleEmail.focus();
     return;
   }
@@ -135,7 +147,8 @@ els.form.addEventListener("submit", async (e) => {
   }
 
   const scheduleEnabled = els.scheduleEnabled.checked;
-  const scheduleMinutes = Number(els.scheduleMinutes.value) || DEFAULT_SCHEDULE_MINUTES;
+  const scheduleMinutes =
+    Number(els.scheduleMinutes.value) || DEFAULT_SCHEDULE_MINUTES;
   if (scheduleEnabled && scheduleMinutes < 15) {
     showSaveError("The schedule interval must be at least 15 minutes.");
     els.scheduleMinutes.focus();
@@ -144,8 +157,14 @@ els.form.addEventListener("submit", async (e) => {
 
   const apiKey = els.llmApiKey.value.trim();
   const llmProvider = els.llmProvider.value;
-  if (apiKey && llmProvider === "openai-compatible" && !els.llmBaseUrl.value.trim()) {
-    showSaveError("The OpenAI-compatible provider needs a base URL (e.g. https://api.openai.com/v1).");
+  if (
+    apiKey &&
+    llmProvider === "openai-compatible" &&
+    !els.llmBaseUrl.value.trim()
+  ) {
+    showSaveError(
+      "The OpenAI-compatible provider needs a base URL (e.g. https://api.openai.com/v1).",
+    );
     els.llmBaseUrl.focus();
     return;
   }
@@ -179,10 +198,15 @@ els.form.addEventListener("submit", async (e) => {
     await saveConfig(next);
     // Also tell the background service worker so tab tracking / badge / the
     // schedule pick up the change immediately.
-    await chrome.runtime.sendMessage({ type: "SET_CONFIG", config: next }).catch(() => {});
+    await chrome.runtime
+      .sendMessage({ type: "SET_CONFIG", config: next })
+      .catch(() => {});
 
     if (scheduleEnabled) {
-      await chrome.runtime.sendMessage({ type: "SCHEDULE_INSTALL", everyMinutes: scheduleMinutes });
+      await chrome.runtime.sendMessage({
+        type: "SCHEDULE_INSTALL",
+        everyMinutes: scheduleMinutes,
+      });
     } else {
       await chrome.runtime.sendMessage({ type: "SCHEDULE_UNINSTALL" });
     }

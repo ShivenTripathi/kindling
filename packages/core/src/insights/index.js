@@ -144,7 +144,10 @@ export function computeInsights(ledger, opts = {}) {
   // Always include "today" as the final point even if rangeDays rounding
   // put the last generated key one short of `now`'s calendar day.
   const todayKey = dayKey(now);
-  if (volumeByDay.length === 0 || volumeByDay[volumeByDay.length - 1].date !== todayKey) {
+  if (
+    volumeByDay.length === 0 ||
+    volumeByDay[volumeByDay.length - 1].date !== todayKey
+  ) {
     volumeByDay.push({ date: todayKey, count: sendsByDay.get(todayKey) ?? 0 });
   }
 
@@ -229,11 +232,61 @@ export const DOMAIN_CATEGORIES = {
  * only for readability; matches are independent.
  * @type {[string, string[]][]} */
 const KEYWORD_THEMES = [
-  ["ai/ml", ["artificial intelligence", "machine learning", "neural network", "llm", "gpt", "transformer model"]],
-  ["health", ["health", "medicine", "medical", "disease", "clinical trial", "vaccine", "diagnosis"]],
-  ["finance", ["stock market", "inflation", "interest rate", "earnings report", "venture capital", "ipo"]],
-  ["politics", ["election", "senate", "congress", "president", "legislation", "policy debate"]],
-  ["product", ["product launch", "roadmap", "user research", "feature release", "beta release"]],
+  [
+    "ai/ml",
+    [
+      "artificial intelligence",
+      "machine learning",
+      "neural network",
+      "llm",
+      "gpt",
+      "transformer model",
+    ],
+  ],
+  [
+    "health",
+    [
+      "health",
+      "medicine",
+      "medical",
+      "disease",
+      "clinical trial",
+      "vaccine",
+      "diagnosis",
+    ],
+  ],
+  [
+    "finance",
+    [
+      "stock market",
+      "inflation",
+      "interest rate",
+      "earnings report",
+      "venture capital",
+      "ipo",
+    ],
+  ],
+  [
+    "politics",
+    [
+      "election",
+      "senate",
+      "congress",
+      "president",
+      "legislation",
+      "policy debate",
+    ],
+  ],
+  [
+    "product",
+    [
+      "product launch",
+      "roadmap",
+      "user research",
+      "feature release",
+      "beta release",
+    ],
+  ],
 ];
 
 /**
@@ -250,7 +303,8 @@ export function tagTopics(article) {
   const domainTag = DOMAIN_CATEGORIES[domain];
   if (domainTag) tags.push(domainTag);
 
-  const haystack = `${article?.title ?? ""} ${article?.textContent ?? ""}`.toLowerCase();
+  const haystack =
+    `${article?.title ?? ""} ${article?.textContent ?? ""}`.toLowerCase();
   for (const [tag, keywords] of KEYWORD_THEMES) {
     if (tags.includes(tag)) continue;
     if (keywords.some((kw) => haystack.includes(kw))) {

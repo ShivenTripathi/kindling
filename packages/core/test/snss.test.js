@@ -184,10 +184,7 @@ describe("snss.js (browser-safe)", () => {
   });
 
   test("parseSnssBuffer rejects bad magic", () => {
-    const buf = concatU8([
-      new TextEncoder().encode("NOPE"),
-      new Uint8Array(4),
-    ]);
+    const buf = concatU8([new TextEncoder().encode("NOPE"), new Uint8Array(4)]);
     assert.throws(() => parseSnssBuffer(buf), SnssParseError);
   });
 

@@ -85,7 +85,8 @@ export default [
       globals: {
         fetch: 'readonly', URL: 'readonly', TextEncoder: 'readonly', TextDecoder: 'readonly',
         btoa: 'readonly', atob: 'readonly', Buffer: 'readonly', DOMParser: 'readonly',
-        XMLSerializer: 'readonly', setTimeout: 'readonly', console: 'readonly', globalThis: 'readonly',
+        XMLSerializer: 'readonly', setTimeout: 'readonly', clearTimeout: 'readonly',
+        AbortController: 'readonly', console: 'readonly', globalThis: 'readonly',
       },
     },
     rules: {

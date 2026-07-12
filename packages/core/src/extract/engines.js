@@ -106,8 +106,7 @@ function shimDetachedDocument(doc, url) {
   // everywhere, and is a no-op if the document already has one.
   try {
     if (url && doc.querySelector && !doc.querySelector("base[href]")) {
-      const head =
-        doc.head || (doc.querySelector && doc.querySelector("head"));
+      const head = doc.head || (doc.querySelector && doc.querySelector("head"));
       if (head && doc.createElement) {
         const base = doc.createElement("base");
         base.setAttribute("href", url);

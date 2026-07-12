@@ -1,6 +1,10 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { computeInsights, tagTopics, DOMAIN_CATEGORIES } from "../src/insights/index.js";
+import {
+  computeInsights,
+  tagTopics,
+  DOMAIN_CATEGORIES,
+} from "../src/insights/index.js";
 
 /** Build an empty ledger. */
 function emptyLedger() {
@@ -130,7 +134,10 @@ describe("computeInsights: topSources", () => {
       closedByKindling: false,
     });
 
-    ledger.tabs["https://www.example.com/1"] = mk("https://www.example.com/1", 1);
+    ledger.tabs["https://www.example.com/1"] = mk(
+      "https://www.example.com/1",
+      1,
+    );
     ledger.tabs["https://example.com/2"] = mk("https://example.com/2", 2);
     ledger.tabs["https://example.com/3"] = mk("https://example.com/3", 3);
     ledger.tabs["https://other.com/1"] = mk("https://other.com/1", 1);

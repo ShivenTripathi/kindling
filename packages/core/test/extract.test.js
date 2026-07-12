@@ -12,10 +12,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { parseHTML } from "linkedom";
 
-import {
-  extractFromDocument,
-  extractFromHtml,
-} from "../src/extract/index.js";
+import { extractFromDocument, extractFromHtml } from "../src/extract/index.js";
 import { runEngine, ENGINE_ORDER } from "../src/extract/engines.js";
 import { scoreArticle } from "../src/extract/score.js";
 import { sanitizeHtml } from "../src/extract/sanitize.js";

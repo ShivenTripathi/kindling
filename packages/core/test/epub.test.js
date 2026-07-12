@@ -37,7 +37,8 @@ const ARTICLES = [
   article({
     url: "https://example.com/first",
     title: "First Article",
-    contentHtml: "<p>First body paragraph.</p><img src=\"https://cdn.example.com/img1.jpg\"/>",
+    contentHtml:
+      '<p>First body paragraph.</p><img src="https://cdn.example.com/img1.jpg"/>',
   }),
   article({
     url: "https://news.example.org/second",
@@ -49,7 +50,7 @@ const ARTICLES = [
   article({
     url: "https://blog.example.net/third",
     title: "Third Article — Control chars \x01\x07",
-    contentHtml: "<p>Third body & <a href=\"https://x.example\">a link</a>.</p>",
+    contentHtml: '<p>Third body & <a href="https://x.example">a link</a>.</p>',
   }),
 ];
 
@@ -85,7 +86,8 @@ describe("buildEpub — zip container", () => {
     const name = decoder().decode(bytes.slice(30, 30 + nameLen));
     assert.equal(name, "mimetype");
     const dataStart = 30 + nameLen + extraLen;
-    const compressedSize = bytes[18] | (bytes[19] << 8) | (bytes[20] << 16) | (bytes[21] << 24);
+    const compressedSize =
+      bytes[18] | (bytes[19] << 8) | (bytes[20] << 16) | (bytes[21] << 24);
     const data = bytes.slice(dataStart, dataStart + compressedSize);
     assert.equal(decoder().decode(data), "application/epub+zip");
   });
@@ -160,7 +162,9 @@ describe("buildEpub — article chapters", () => {
       date: FIXED_DATE,
     });
     const files = unzipSync(bytes);
-    const imageFiles = Object.keys(files).filter((n) => n.startsWith("OEBPS/images/"));
+    const imageFiles = Object.keys(files).filter((n) =>
+      n.startsWith("OEBPS/images/"),
+    );
     assert.equal(imageFiles.length, 0);
     const ch1 = decoder().decode(files["OEBPS/article-0001.xhtml"]);
     assert.ok(!/<img/.test(ch1));
@@ -169,7 +173,10 @@ describe("buildEpub — article chapters", () => {
   test("images are embedded when fetchImage is supplied", async () => {
     const fetchImage = async (url) => {
       assert.equal(url, "https://cdn.example.com/img1.jpg");
-      return { bytes: new Uint8Array([0xff, 0xd8, 0xff, 0xd9]), contentType: "image/jpeg" };
+      return {
+        bytes: new Uint8Array([0xff, 0xd8, 0xff, 0xd9]),
+        contentType: "image/jpeg",
+      };
     };
     const { bytes } = await buildEpub(ARTICLES, {
       title: "Tab Digest",
@@ -177,7 +184,9 @@ describe("buildEpub — article chapters", () => {
       fetchImage,
     });
     const files = unzipSync(bytes);
-    const imageFiles = Object.keys(files).filter((n) => n.startsWith("OEBPS/images/"));
+    const imageFiles = Object.keys(files).filter((n) =>
+      n.startsWith("OEBPS/images/"),
+    );
     assert.equal(imageFiles.length, 1);
     assert.match(imageFiles[0], /\.jpg$/);
     const ch1 = decoder().decode(files["OEBPS/article-0001.xhtml"]);
@@ -201,7 +210,10 @@ describe("buildEpub — article chapters", () => {
   });
 
   test("no failed page when failedUrls is empty", async () => {
-    const { bytes } = await buildEpub(ARTICLES, { title: "Tab Digest", date: FIXED_DATE });
+    const { bytes } = await buildEpub(ARTICLES, {
+      title: "Tab Digest",
+      date: FIXED_DATE,
+    });
     const files = unzipSync(bytes);
     assert.equal(files["OEBPS/failed.xhtml"], undefined);
   });
@@ -221,13 +233,21 @@ describe("splitForSizeLimit", () => {
   test("partitions oversized input into multiple groups under maxBytes", () => {
     const bigHtml = "<p>" + "x".repeat(50_000) + "</p>";
     const many = Array.from({ length: 10 }, (_, i) =>
-      article({ url: `https://example.com/big-${i}`, title: `Big ${i}`, contentHtml: bigHtml }),
+      article({
+        url: `https://example.com/big-${i}`,
+        title: `Big ${i}`,
+        contentHtml: bigHtml,
+      }),
     );
     const maxBytes = 200_000; // forces multiple groups given 50KB+ articles
     const groups = splitForSizeLimit(many, maxBytes);
     assert.ok(groups.length > 1, "expected more than one group");
     const total = groups.reduce((n, g) => n + g.length, 0);
-    assert.equal(total, many.length, "no article should be dropped by splitting");
+    assert.equal(
+      total,
+      many.length,
+      "no article should be dropped by splitting",
+    );
     for (const g of groups) assert.ok(g.length > 0);
   });
 
@@ -247,10 +267,16 @@ describe("buildEpub — determinism", () => {
   test("GOLDEN: same articles + date produce byte-identical output across two builds", async () => {
     const opts = { title: "Tab Digest", date: FIXED_DATE };
     const first = await buildEpub(ARTICLES, opts);
-    const second = await buildEpub(ARTICLES, { ...opts, date: new Date(FIXED_DATE) });
+    const second = await buildEpub(ARTICLES, {
+      ...opts,
+      date: new Date(FIXED_DATE),
+    });
 
     assert.equal(first.sizeBytes, second.sizeBytes);
-    assert.equal(Buffer.from(first.bytes).equals(Buffer.from(second.bytes)), true);
+    assert.equal(
+      Buffer.from(first.bytes).equals(Buffer.from(second.bytes)),
+      true,
+    );
   });
 
   test("book id (dc:identifier) is stable for the same articles + date", async () => {
@@ -265,7 +291,10 @@ describe("buildEpub — determinism", () => {
     const idB = opfB.match(/urn:uuid:([0-9a-f-]+)/)[1];
     assert.equal(idA, idB);
     // RFC 4122-ish shape: 8-4-4-4-12 hex groups.
-    assert.match(idA, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+    assert.match(
+      idA,
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+    );
   });
 
   test("book id changes when the article set changes", async () => {

@@ -56,7 +56,9 @@ function installChromeStub() {
       remove: async () => {},
     },
     scripting: {
-      executeScript: async () => [{ result: { status: "skipped", reason: "stub" } }],
+      executeScript: async () => [
+        { result: { status: "skipped", reason: "stub" } },
+      ],
     },
     alarms: {
       create: async () => {},
@@ -92,7 +94,9 @@ test("adapters.js exports the documented shape and works against the chrome stub
   assert.equal(typeof adapters.getAuthEmail, "function");
   assert.equal(typeof adapters.loadConfig, "function");
   assert.equal(typeof adapters.saveConfig, "function");
-  assert.ok(adapters.DEFAULT_CONFIG && typeof adapters.DEFAULT_CONFIG === "object");
+  assert.ok(
+    adapters.DEFAULT_CONFIG && typeof adapters.DEFAULT_CONFIG === "object",
+  );
   assert.equal(adapters.DEFAULT_CONFIG.staleHours, 48);
   assert.equal(adapters.DEFAULT_CONFIG.minWords, 300);
 
@@ -133,11 +137,26 @@ test("background.js imports cleanly against the chrome stub and installs its lis
   const { listeners } = installChromeStub();
   await import("../src/background.js");
 
-  assert.ok(listeners.onMessage.length >= 1, "registers a runtime.onMessage handler");
-  assert.ok(listeners.onCreated.length >= 1, "registers a tabs.onCreated handler");
-  assert.ok(listeners.onRemoved.length >= 1, "registers a tabs.onRemoved handler");
-  assert.ok(listeners.onUpdated.length >= 1, "registers a tabs.onUpdated handler");
-  assert.ok(listeners.onAlarm.length >= 1, "registers an alarms.onAlarm handler");
+  assert.ok(
+    listeners.onMessage.length >= 1,
+    "registers a runtime.onMessage handler",
+  );
+  assert.ok(
+    listeners.onCreated.length >= 1,
+    "registers a tabs.onCreated handler",
+  );
+  assert.ok(
+    listeners.onRemoved.length >= 1,
+    "registers a tabs.onRemoved handler",
+  );
+  assert.ok(
+    listeners.onUpdated.length >= 1,
+    "registers a tabs.onUpdated handler",
+  );
+  assert.ok(
+    listeners.onAlarm.length >= 1,
+    "registers an alarms.onAlarm handler",
+  );
 
   // Drive the message router directly (bypassing real chrome.runtime
   // dispatch, which the stub doesn't implement) to prove GET_STATE responds
@@ -149,7 +168,11 @@ test("background.js imports cleanly against the chrome stub and installs its lis
     { id: "test-extension-id" },
     (resp) => responses.push(resp),
   );
-  assert.equal(keepChannelOpen, true, "returns true to keep the async channel open");
+  assert.equal(
+    keepChannelOpen,
+    true,
+    "returns true to keep the async channel open",
+  );
 
   // Let the handler's promise chain resolve.
   await new Promise((resolve) => setTimeout(resolve, 0));
@@ -172,13 +195,18 @@ test("content-extract.js sets window.__kindlingExtract when a DOM is present", a
   // exercises the wiring as long as `window`/`document` exist. Use jsdom's
   // globals if available; otherwise skip (this file's real behavior is only
   // fully verifiable via chrome.scripting in a loaded extension).
-  let hasDom = typeof globalThis.window !== "undefined" && typeof globalThis.document !== "undefined";
+  let hasDom =
+    typeof globalThis.window !== "undefined" &&
+    typeof globalThis.document !== "undefined";
   if (!hasDom) {
     try {
       const { JSDOM } = await import("jsdom");
-      const dom = new JSDOM("<!doctype html><html><body><p>hi</p></body></html>", {
-        url: "https://example.com/",
-      });
+      const dom = new JSDOM(
+        "<!doctype html><html><body><p>hi</p></body></html>",
+        {
+          url: "https://example.com/",
+        },
+      );
       globalThis.window = dom.window;
       globalThis.document = dom.window.document;
       globalThis.location = dom.window.location;
@@ -189,7 +217,9 @@ test("content-extract.js sets window.__kindlingExtract when a DOM is present", a
   }
 
   if (!hasDom) {
-    console.warn("skipping content-extract.js DOM check: no window/document/jsdom available");
+    console.warn(
+      "skipping content-extract.js DOM check: no window/document/jsdom available",
+    );
     return;
   }
 

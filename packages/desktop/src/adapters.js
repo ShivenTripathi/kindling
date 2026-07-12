@@ -10,7 +10,14 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
-import { readTextFile, writeTextFile, exists, mkdir } from "@tauri-apps/plugin-fs";
+import {
+  readTextFile,
+  writeTextFile,
+  exists,
+  mkdir,
+  rename,
+  remove,
+} from "@tauri-apps/plugin-fs";
 import { openTabsFromBytes } from "@kindling/core/snss";
 import { screenUrl } from "@kindling/core/filter";
 import { extractFromDocument } from "@kindling/core/extract";
@@ -53,10 +60,14 @@ export function makeContentSource() {
         }
         const html = await res.text();
         const doc = new DOMParser().parseFromString(html, "text/html");
-        const minWords = typeof opts.minWords === "number" ? opts.minWords : 300;
+        const minWords =
+          typeof opts.minWords === "number" ? opts.minWords : 300;
         return extractFromDocument(doc, url, { minWords });
       } catch (err) {
-        return { status: "failed", reason: `fetch failed: ${err && err.message}` };
+        return {
+          status: "failed",
+          reason: `fetch failed: ${err && err.message}`,
+        };
       }
     },
   };
@@ -127,11 +138,22 @@ export const storage = {
     if (!(await exists(dir))) return undefined;
     const path = await filePathFor(key);
     if (!(await exists(path))) return undefined;
+    let text;
     try {
-      const text = await readTextFile(path);
-      return JSON.parse(text);
+      text = await readTextFile(path);
     } catch {
       return undefined;
+    }
+    if (text.trim() === "") return undefined;
+    try {
+      return JSON.parse(text);
+    } catch (err) {
+      // A corrupt (e.g. crash-truncated) file must not be silently treated as
+      // "absent" — that would erase settings/history without a word. Surface it.
+      throw new Error(
+        `Your ${FILES[key]} is corrupt and couldn't be read (${err.message}). ` +
+          `Move it aside from the app data folder to start fresh.`,
+      );
     }
   },
   async set(key, value) {
@@ -141,13 +163,17 @@ export const storage = {
       await mkdir(dir, { recursive: true });
     }
     const path = await filePathFor(key);
-    await writeTextFile(path, JSON.stringify(value, null, 2));
+    // Atomic write: write a temp file then rename over the target, so a crash
+    // mid-write can't leave a truncated config/ledger behind.
+    const tmp = `${path}.tmp`;
+    await writeTextFile(tmp, JSON.stringify(value, null, 2));
+    await rename(tmp, path);
   },
   async remove(key) {
     if (!(key in FILES)) return;
     const path = await filePathFor(key);
     if (await exists(path)) {
-      await writeTextFile(path, "");
+      await remove(path);
     }
   },
 };

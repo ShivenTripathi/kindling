@@ -4,7 +4,12 @@
 // SMTP send) with the Tauri adapters wired in as ports.
 
 import { runDigest } from "@kindling/core";
-import { loadLedger, saveLedger, recordSnapshot, selectStale } from "@kindling/core/ledger";
+import {
+  loadLedger,
+  saveLedger,
+  recordSnapshot,
+  selectStale,
+} from "@kindling/core/ledger";
 import {
   tabsAdapter,
   listChromeProfiles,
@@ -60,8 +65,14 @@ let openTabs = [];
 /** Rows currently rendered: {url,title,domain,ageMs,selected} */
 let rows = [];
 let intervalHandle = null;
+// Guards against overlapping sends (manual button vs. the auto-run timer, or a
+// second timer tick firing before a slow run finishes) — which would otherwise
+// double-send the same articles and race the ledger write.
+let sendInFlight = false;
 
-init().catch((err) => showBanner(`Failed to start: ${err && err.message}`, "error"));
+init().catch((err) =>
+  showBanner(`Failed to start: ${err && err.message}`, "error"),
+);
 
 async function init() {
   config = await loadConfig();
@@ -76,7 +87,10 @@ async function safeListProfiles() {
   try {
     return await listChromeProfiles();
   } catch (err) {
-    showBanner(`Could not list Chrome profiles: ${err && err.message}`, "error");
+    showBanner(
+      `Could not list Chrome profiles: ${err && err.message}`,
+      "error",
+    );
     return [];
   }
 }
@@ -84,7 +98,13 @@ async function safeListProfiles() {
 function populateProfileSelects() {
   const options = profiles.length
     ? profiles
-    : [{ id: config.profileId || "Default", name: config.profileId || "Default", email: null }];
+    : [
+        {
+          id: config.profileId || "Default",
+          name: config.profileId || "Default",
+          email: null,
+        },
+      ];
   for (const select of [els.profileSelect, els.sProfileSelect]) {
     select.innerHTML = "";
     for (const p of options) {
@@ -297,7 +317,8 @@ function renderRows() {
     const domainSpan = document.createElement("span");
     domainSpan.textContent = row.domain;
     const ageSpan = document.createElement("span");
-    ageSpan.textContent = els.sendAllToggle.checked && !row.stale ? "open" : formatAge(row.ageMs);
+    ageSpan.textContent =
+      els.sendAllToggle.checked && !row.stale ? "open" : formatAge(row.ageMs);
     meta.append(domainSpan, ageSpan);
 
     body.append(title, meta);
@@ -338,6 +359,11 @@ async function onSend() {
     openSettings();
     return;
   }
+  if (sendInFlight) {
+    showBanner("A send is already in progress.", "info");
+    return;
+  }
+  sendInFlight = true;
 
   hideBanner();
   els.resultView.hidden = true;
@@ -369,7 +395,10 @@ async function onSend() {
     els.progressLabel.textContent = "Done.";
     renderResult(report);
     if (report.sent.length > 0) {
-      showBanner(`Sent ${report.sent.length} article(s) to ${config.kindleEmail}.`, "success");
+      showBanner(
+        `Sent ${report.sent.length} article(s) to ${config.kindleEmail}.`,
+        "success",
+      );
     } else {
       showBanner("Nothing was sent — see the results below.", "error");
     }
@@ -377,6 +406,8 @@ async function onSend() {
   } catch (err) {
     showBanner(`Send failed: ${err && err.message}`, "error");
   } finally {
+    sendInFlight = false;
+    els.sendBtn.disabled = false;
     els.progressView.hidden = true;
     updateCount();
   }
@@ -404,7 +435,13 @@ function renderResult(report) {
 }
 
 function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  return String(s).replace(
+    /[&<>"']/g,
+    (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
+        c
+      ],
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -420,12 +457,11 @@ function armInterval() {
   }
   const minutes = config.intervalMinutes;
   if (!minutes || minutes <= 0) return;
-  intervalHandle = setInterval(
-    () => {
-      runScheduled().catch((err) => showBanner(`Scheduled run failed: ${err && err.message}`, "error"));
-    },
-    minutes * 60_000,
-  );
+  intervalHandle = setInterval(() => {
+    runScheduled().catch((err) =>
+      showBanner(`Scheduled run failed: ${err && err.message}`, "error"),
+    );
+  }, minutes * 60_000);
 }
 
 /** The scheduled path: snapshot the currently open tabs into the ledger and
@@ -433,26 +469,32 @@ function armInterval() {
  * required, unlike the manual "Send to Kindle" button. */
 async function runScheduled() {
   if (!config.kindleEmail) return;
-  const tabs = await tabsAdapter.readOpenTabs(config.profileId);
-  const ports = {
-    content: makeContentSource(),
-    sender: makeSmtpSender(config.smtp),
-    storage,
-  };
-  const report = await runDigest({
-    openTabs: tabs,
-    ports,
-    config: {
-      kindleEmail: config.kindleEmail,
-      senderEmail: config.senderEmail,
-      staleHours: config.staleHours,
-      minWords: config.minWords,
-      filters: config.filters,
-      title: "Kindling Digest",
-    },
-  });
-  if (report.sent.length > 0) {
-    showBanner(`Auto-run: sent ${report.sent.length} article(s).`, "success");
+  if (sendInFlight) return; // a manual or previous scheduled send is still running
+  sendInFlight = true;
+  try {
+    const tabs = await tabsAdapter.readOpenTabs(config.profileId);
+    const ports = {
+      content: makeContentSource(),
+      sender: makeSmtpSender(config.smtp),
+      storage,
+    };
+    const report = await runDigest({
+      openTabs: tabs,
+      ports,
+      config: {
+        kindleEmail: config.kindleEmail,
+        senderEmail: config.senderEmail,
+        staleHours: config.staleHours,
+        minWords: config.minWords,
+        filters: config.filters,
+        title: "Kindling Digest",
+      },
+    });
+    if (report.sent.length > 0) {
+      showBanner(`Auto-run: sent ${report.sent.length} article(s).`, "success");
+    }
+    await refresh();
+  } finally {
+    sendInFlight = false;
   }
-  await refresh();
 }

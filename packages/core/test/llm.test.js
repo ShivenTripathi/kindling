@@ -17,7 +17,8 @@ function stubFetch({ status = 200, statusText = "OK", json, text } = {}) {
         if (json === undefined) throw new Error("no json body configured");
         return json;
       },
-      text: async () => (text !== undefined ? text : JSON.stringify(json ?? {})),
+      text: async () =>
+        text !== undefined ? text : JSON.stringify(json ?? {}),
     };
   };
   return { fetchImpl, calls };
@@ -50,7 +51,11 @@ describe("AnthropicProvider", () => {
       json: { content: [{ text: "A tight summary." }] },
     });
     const provider = createProvider(
-      { provider: "anthropic", apiKey: FAKE_KEY, model: "claude-3-5-haiku-latest" },
+      {
+        provider: "anthropic",
+        apiKey: FAKE_KEY,
+        model: "claude-3-5-haiku-latest",
+      },
       { fetchImpl },
     );
     assert.ok(provider);
@@ -65,7 +70,10 @@ describe("AnthropicProvider", () => {
     assert.equal(url, "https://api.anthropic.com/v1/messages");
     assert.equal(init.headers["x-api-key"], FAKE_KEY);
     assert.equal(init.headers["anthropic-version"], "2023-06-01");
-    assert.equal(init.headers["anthropic-dangerous-direct-browser-access"], undefined);
+    assert.equal(
+      init.headers["anthropic-dangerous-direct-browser-access"],
+      undefined,
+    );
 
     const body = JSON.parse(init.body);
     assert.equal(body.model, "claude-3-5-haiku-latest");
@@ -317,11 +325,18 @@ describe("Gemini transport (free tier)", () => {
       { provider: "gemini", apiKey: "AIza-secret-key" },
       { fetchImpl },
     );
-    assert.deepEqual(p.info, { provider: "gemini", model: "gemini-2.5-flash-lite", browserUsable: true });
+    assert.deepEqual(p.info, {
+      provider: "gemini",
+      model: "gemini-2.5-flash-lite",
+      browserUsable: true,
+    });
     const out = await p.summarize("some long article text");
     assert.equal(out, "a summary");
     const { url, init } = calls[0];
-    assert.match(url, /generativelanguage\.googleapis\.com\/v1beta\/models\/gemini-2\.5-flash-lite:generateContent\?key=/);
+    assert.match(
+      url,
+      /generativelanguage\.googleapis\.com\/v1beta\/models\/gemini-2\.5-flash-lite:generateContent\?key=/,
+    );
     assert.equal(init.method, "POST");
     const body = JSON.parse(init.body);
     assert.equal(body.contents[0].parts[0].text.length > 0, true);
@@ -342,13 +357,20 @@ describe("Gemini transport (free tier)", () => {
   });
 
   test("an error (e.g. 429 free-tier limit) never leaks the api key", async () => {
-    const { fetchImpl } = stubFetch({ status: 429, statusText: "Too Many Requests", text: "quota" });
+    const { fetchImpl } = stubFetch({
+      status: 429,
+      statusText: "Too Many Requests",
+      text: "quota",
+    });
     const p = createProvider(
       { provider: "gemini", apiKey: "AIza-SUPER-SECRET" },
       { fetchImpl },
     );
     await assert.rejects(p.summarize("t"), (err) => {
-      assert.ok(!String(err.message).includes("AIza-SUPER-SECRET"), "key must not appear in the error");
+      assert.ok(
+        !String(err.message).includes("AIza-SUPER-SECRET"),
+        "key must not appear in the error",
+      );
       return true;
     });
   });

@@ -2,7 +2,12 @@
 // + chrome.*), computed entirely from the local ledger: no network calls, no
 // remote code (MV3 forbids it), no chart library — every visual here is
 // hand-built inline SVG/HTML.
-import { chromeStorage, loadConfig, makeLlmProvider, makeGmailSender } from "../adapters.js";
+import {
+  chromeStorage,
+  loadConfig,
+  makeLlmProvider,
+  makeGmailSender,
+} from "../adapters.js";
 import { computeInsights, tagTopics } from "@kindling/core/insights";
 import { buildEpub } from "@kindling/core";
 import {
@@ -19,7 +24,9 @@ const els = {
   settingsLink: $("settings-link"),
   emptyView: $("empty-view"),
   dashboardView: $("dashboard-view"),
-  rangeBtns: /** @type {HTMLButtonElement[]} */ ([...document.querySelectorAll(".range-btn")]),
+  rangeBtns: /** @type {HTMLButtonElement[]} */ ([
+    ...document.querySelectorAll(".range-btn"),
+  ]),
   statBacklog: $("stat-backlog"),
   statSent: $("stat-sent"),
   statSentSub: $("stat-sent-sub"),
@@ -42,8 +49,12 @@ const els = {
   aiSendStatus: $("ai-send-status"),
 };
 
-els.settingsLink.addEventListener("click", () => chrome.runtime.openOptionsPage());
-els.aiUpsellLink.addEventListener("click", () => chrome.runtime.openOptionsPage());
+els.settingsLink.addEventListener("click", () =>
+  chrome.runtime.openOptionsPage(),
+);
+els.aiUpsellLink.addEventListener("click", () =>
+  chrome.runtime.openOptionsPage(),
+);
 els.aiGenerateBtn.addEventListener("click", onGenerateMonthlyDigest);
 els.aiSendBtn.addEventListener("click", onSendMonthlyDigest);
 
@@ -61,7 +72,9 @@ async function init() {
   config = await loadConfig();
   updateAiVisibility();
 
-  const hasHistory = Object.keys(ledger.tabs ?? {}).length > 0 || (ledger.digests ?? []).length > 0;
+  const hasHistory =
+    Object.keys(ledger.tabs ?? {}).length > 0 ||
+    (ledger.digests ?? []).length > 0;
   if (!hasHistory) {
     els.emptyView.hidden = false;
     els.dashboardView.hidden = true;
@@ -74,7 +87,8 @@ async function init() {
   for (const btn of els.rangeBtns) {
     btn.addEventListener("click", () => {
       currentRange = btn.dataset.range;
-      for (const b of els.rangeBtns) b.setAttribute("aria-selected", String(b === btn));
+      for (const b of els.rangeBtns)
+        b.setAttribute("aria-selected", String(b === btn));
       render();
     });
   }
@@ -178,7 +192,11 @@ function renderVolumeChart(volumeByDay) {
 
 function shortDate(isoDay) {
   const d = new Date(`${isoDay}T00:00:00Z`);
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
+  return d.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
 }
 
 // ---- Top sources -------------------------------------------------------
@@ -258,7 +276,10 @@ async function onGenerateMonthlyDigest() {
 
   try {
     const rangeDays = RANGE_PRESETS[currentRange] ?? RANGE_PRESETS.month;
-    const items = summarizedItemsInRange(ledger, { now: new Date(), rangeDays });
+    const items = summarizedItemsInRange(ledger, {
+      now: new Date(),
+      rangeDays,
+    });
     if (items.length === 0) {
       throw new Error(
         "No summarized articles in this range yet — summaries are generated the next time you send a digest with AI insights on.",
@@ -292,7 +313,10 @@ function friendlyAiError(err) {
 
 async function onSendMonthlyDigest() {
   if (!lastNarrative || !config || !config.kindleEmail) {
-    els.aiSendStatus.textContent = config && config.kindleEmail ? "" : "Add a Kindle address in Settings first.";
+    els.aiSendStatus.textContent =
+      config && config.kindleEmail
+        ? ""
+        : "Add a Kindle address in Settings first.";
     return;
   }
 
@@ -405,7 +429,12 @@ function renderDigestHistory() {
 function formatDigestDate(iso) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric" });
+  return d.toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 function emptyNote(text) {
@@ -416,5 +445,11 @@ function emptyNote(text) {
 }
 
 function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  return String(s).replace(
+    /[&<>"']/g,
+    (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
+        c
+      ],
+  );
 }

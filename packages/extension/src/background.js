@@ -22,7 +22,20 @@ const BADGE_COLOR = "#D97706"; // warm amber
  * http(s) urls that pass screenUrl (per the current config's filters) are
  * tracked — sensitive/app tabs are never captured here.
  * @returns {Promise<Record<string, {firstSeen:string, title:string, url:string}>>} */
-async function recomputeTabAges() {
+// Serialize recompute calls: tabs.onCreated/onUpdated/onRemoved + the alarm can
+// all fire concurrently, and the read-modify-write of `tabAges` would otherwise
+// race (a later set() clobbering another handler's firstSeen/title). Chain each
+// call behind the previous so they can't interleave.
+let recomputeChain = Promise.resolve();
+function recomputeTabAges() {
+  recomputeChain = recomputeChain.then(
+    recomputeTabAgesImpl,
+    recomputeTabAgesImpl,
+  );
+  return recomputeChain;
+}
+
+async function recomputeTabAgesImpl() {
   const config = await loadConfig();
   const tabs = await chrome.tabs.query({});
   const nowIso = new Date().toISOString();
@@ -39,7 +52,11 @@ async function recomputeTabAges() {
 
     const existing = tabAges[key];
     if (!existing) {
-      tabAges[key] = { firstSeen: nowIso, title: tab.title || tab.url, url: tab.url };
+      tabAges[key] = {
+        firstSeen: nowIso,
+        title: tab.title || tab.url,
+        url: tab.url,
+      };
     } else {
       existing.title = tab.title || existing.title;
       existing.url = tab.url;
@@ -61,10 +78,13 @@ async function updateBadge(config, tabAges) {
   const nowMs = Date.now();
   let staleCount = 0;
   for (const record of Object.values(tabAges)) {
-    if (nowMs - new Date(record.firstSeen).getTime() >= thresholdMs) staleCount++;
+    if (nowMs - new Date(record.firstSeen).getTime() >= thresholdMs)
+      staleCount++;
   }
   await chrome.action.setBadgeBackgroundColor({ color: BADGE_COLOR });
-  await chrome.action.setBadgeText({ text: staleCount > 0 ? String(staleCount) : "" });
+  await chrome.action.setBadgeText({
+    text: staleCount > 0 ? String(staleCount) : "",
+  });
 }
 
 /** Build the {url,title,ageMs,stale} list GET_STATE returns. */
@@ -73,35 +93,56 @@ function tabsFromAges(tabAges, staleHours) {
   const nowMs = Date.now();
   return Object.values(tabAges).map((record) => {
     const ageMs = nowMs - new Date(record.firstSeen).getTime();
-    return { url: record.url, title: record.title, ageMs, stale: ageMs >= thresholdMs };
+    return {
+      url: record.url,
+      title: record.title,
+      ageMs,
+      stale: ageMs >= thresholdMs,
+    };
   });
 }
 
 for (const evt of [chrome.tabs.onCreated, chrome.tabs.onRemoved]) {
   evt.addListener(() => {
-    recomputeTabAges().catch((err) => console.error("kindling: recompute failed", err));
+    recomputeTabAges().catch((err) =>
+      console.error("kindling: recompute failed", err),
+    );
   });
 }
 chrome.tabs.onUpdated.addListener((_tabId, changeInfo) => {
   if (!changeInfo.url && changeInfo.status !== "complete") return;
-  recomputeTabAges().catch((err) => console.error("kindling: recompute failed", err));
+  recomputeTabAges().catch((err) =>
+    console.error("kindling: recompute failed", err),
+  );
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === RECOMPUTE_ALARM) {
-    recomputeTabAges().catch((err) => console.error("kindling: recompute failed", err));
+    recomputeTabAges().catch((err) =>
+      console.error("kindling: recompute failed", err),
+    );
   } else if (alarm.name === SCHEDULED_SEND_ALARM) {
-    runScheduledSend().catch((err) => console.error("kindling: scheduled send failed", err));
+    runScheduledSend().catch((err) =>
+      console.error("kindling: scheduled send failed", err),
+    );
   }
 });
 
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.alarms.create(RECOMPUTE_ALARM, { periodInMinutes: RECOMPUTE_PERIOD_MINUTES });
-  recomputeTabAges().catch((err) => console.error("kindling: recompute failed", err));
+  chrome.alarms.create(RECOMPUTE_ALARM, {
+    periodInMinutes: RECOMPUTE_PERIOD_MINUTES,
+  });
+  recomputeTabAges().catch((err) =>
+    console.error("kindling: recompute failed", err),
+  );
 });
 chrome.runtime.onStartup.addListener(() => {
-  chrome.alarms.create(RECOMPUTE_ALARM, { periodInMinutes: RECOMPUTE_PERIOD_MINUTES });
-  recomputeTabAges().catch((err) => console.error("kindling: recompute failed", err));
+  chrome.alarms.create(RECOMPUTE_ALARM, {
+    periodInMinutes: RECOMPUTE_PERIOD_MINUTES,
+  });
+  recomputeTabAges().catch((err) =>
+    console.error("kindling: recompute failed", err),
+  );
 });
 
 // ---- Offscreen document lifecycle (scheduled send) -------------------------
@@ -131,7 +172,8 @@ async function ensureOffscreenDocument() {
     .catch((err) => {
       // "Only a single offscreen document may be created" races are
       // benign — another caller already stood one up.
-      if (!/single offscreen document/i.test(String(err && err.message))) throw err;
+      if (!/single offscreen document/i.test(String(err && err.message)))
+        throw err;
     })
     .finally(() => {
       offscreenReady = null;
@@ -150,23 +192,52 @@ async function runScheduledSend() {
   if (!config.kindleEmail) return; // nothing configured — nothing to do
 
   await ensureOffscreenDocument();
+  let report;
+  let error = null;
   try {
-    const report = await chrome.runtime.sendMessage({ type: "RUN_SCHEDULED" });
-    return report;
+    report = await chrome.runtime.sendMessage({ type: "RUN_SCHEDULED" });
+  } catch (err) {
+    error = String((err && err.message) || err);
   } finally {
-    await closeOffscreenDocument().catch((err) => console.error("kindling: closing offscreen failed", err));
+    await closeOffscreenDocument().catch((err) =>
+      console.error("kindling: closing offscreen failed", err),
+    );
   }
+  // Persist the outcome so it isn't a silent black box — the popup surfaces it.
+  await chromeStorage.set("lastScheduledReport", {
+    at: new Date().toISOString(),
+    sent: report?.sent?.length ?? 0,
+    failed: report?.failed?.length ?? 0,
+    skipped: report?.skipped?.length ?? 0,
+    error,
+  });
+  return report;
 }
 
 // ---- Message router ---------------------------------------------------------
 
+// Message types this service worker OWNS. Anything else (notably RUN_SCHEDULED,
+// which is for the offscreen document) must be ignored here — a broadcast
+// sendMessage reaches EVERY listener including this one, so responding to a
+// message we don't own would race and clobber the intended handler's reply.
+const OWNED_MESSAGE_TYPES = new Set([
+  "GET_STATE",
+  "SET_CONFIG",
+  "SCHEDULE_INSTALL",
+  "SCHEDULE_UNINSTALL",
+  "EXTRACT",
+]);
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!sender || sender.id !== chrome.runtime.id) return false; // no externally_connectable — ignore anything else
   if (!message || typeof message.type !== "string") return false;
+  if (!OWNED_MESSAGE_TYPES.has(message.type)) return false; // not ours (e.g. RUN_SCHEDULED → offscreen)
 
   handleMessage(message, sender)
     .then(sendResponse)
-    .catch((err) => sendResponse({ error: String((err && err.message) || err) }));
+    .catch((err) =>
+      sendResponse({ error: String((err && err.message) || err) }),
+    );
   return true; // keep the message channel open for the async response
 });
 
@@ -194,6 +265,13 @@ async function handleMessage(message) {
     case "EXTRACT": {
       // Proxy for the offscreen document, which has no chrome.scripting
       // access — the SW is the only context that can inject into tabs.
+      // Re-screen here, authoritatively, at the one place that actually touches
+      // a live tab's DOM: a sensitive/excluded tab must never be captured even
+      // if something upstream offered it.
+      const cfg = await loadConfig();
+      const screen = screenUrl(message.url, cfg.filters);
+      if (!screen.include)
+        return { status: "skipped", reason: `excluded: ${screen.reason}` };
       const source = makeContentSource();
       return source.getArticle(message.url, message.opts || {});
     }

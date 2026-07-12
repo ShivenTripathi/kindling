@@ -53,9 +53,13 @@ let tabs = [];
 /** current config, kept in sync with storage */
 let config = null;
 
-els.settingsLink.addEventListener("click", () => chrome.runtime.openOptionsPage());
+els.settingsLink.addEventListener("click", () =>
+  chrome.runtime.openOptionsPage(),
+);
 els.dashboardLink.addEventListener("click", () =>
-  chrome.tabs.create({ url: chrome.runtime.getURL("dashboard/dashboard.html") }),
+  chrome.tabs.create({
+    url: chrome.runtime.getURL("dashboard/dashboard.html"),
+  }),
 );
 
 // ---------------------------------------------------------------------------
@@ -127,7 +131,9 @@ els.obConnect.addEventListener("click", async () => {
 els.obContinue.addEventListener("click", async () => {
   const kindleEmail = els.obKindleEmail.value.trim().toLowerCase();
   if (!isValidKindleEmail(kindleEmail)) {
-    showObError("That doesn't look like a Send-to-Kindle address — it should end in kindle.com.");
+    showObError(
+      "That doesn't look like a Send-to-Kindle address — it should end in kindle.com.",
+    );
     return;
   }
   if (!connectedSenderEmail) {
@@ -142,7 +148,11 @@ els.obContinue.addEventListener("click", async () => {
     els.onboarding.hidden = true;
     await enterMain();
   } catch (err) {
-    showObError(err && err.message ? err.message : "Could not save your settings. Try again.");
+    showObError(
+      err && err.message
+        ? err.message
+        : "Could not save your settings. Try again.",
+    );
     els.obContinue.disabled = false;
     els.obContinue.textContent = "Get started";
   }
@@ -175,7 +185,8 @@ async function enterMain() {
   try {
     state = await chrome.runtime.sendMessage({ type: "GET_STATE" });
   } catch (err) {
-    els.loading.textContent = "Couldn't reach Kindling's background service. Try reopening the popup.";
+    els.loading.textContent =
+      "Couldn't reach Kindling's background service. Try reopening the popup.";
     return;
   }
 
@@ -184,6 +195,19 @@ async function enterMain() {
 
   els.loading.hidden = true;
   els.closeAfterSend.checked = !!config.closeAfterSend;
+
+  // Surface the last background/scheduled run so it's never a silent black box.
+  try {
+    const last = await chromeStorage.get("lastScheduledReport");
+    if (last && last.error) {
+      showSendError(`Last scheduled run failed: ${last.error}`);
+    } else if (last && last.sent > 0) {
+      els.lastSentBanner.hidden = false;
+      els.lastSentBanner.textContent = `✅ Auto-run sent ${last.sent} article${last.sent === 1 ? "" : "s"} on ${new Date(last.at).toLocaleString()}.`;
+    }
+  } catch {
+    /* non-fatal */
+  }
 
   if (tabs.length === 0) {
     els.empty.hidden = false;
@@ -267,7 +291,9 @@ function updateSendButton() {
   els.sendBtn.disabled = n === 0;
   els.countLabel.textContent = `${n} of ${tabs.length} selected`;
 
-  const allChecked = checkedRows().every((li) => li.querySelector(".tab-checkbox").checked);
+  const allChecked = checkedRows().every(
+    (li) => li.querySelector(".tab-checkbox").checked,
+  );
   els.selectAll.checked = tabs.length > 0 && allChecked;
 }
 
@@ -289,7 +315,9 @@ els.closeAfterSend.addEventListener("change", async () => {
 });
 
 function setRowStatus(url, kind, text) {
-  const li = els.tabList.querySelector(`.tab-item[data-url="${CSS.escape(url)}"]`);
+  const li = els.tabList.querySelector(
+    `.tab-item[data-url="${CSS.escape(url)}"]`,
+  );
   if (!li) return;
   const status = li.querySelector(".tab-status");
   status.className = `tab-status status-${kind}`;
@@ -304,6 +332,25 @@ els.sendBtn.addEventListener("click", onSend);
 async function onSend() {
   const urls = checkedUrls();
   if (urls.length === 0) return;
+
+  // Extraction reads the content of the tabs you send via chrome.scripting,
+  // which needs host access. We keep that OUT of the install-time permissions
+  // (nothing granted up front) and request it here, on this user gesture, the
+  // first time you send. Without it, every extraction would fail.
+  try {
+    const granted = await chrome.permissions.request({
+      origins: ["http://*/*", "https://*/*"],
+    });
+    if (!granted) {
+      showSendError(
+        "Kindling needs permission to read the pages you send. Click Send again and choose Allow.",
+      );
+      return;
+    }
+  } catch (err) {
+    showSendError(`Could not request page access: ${err && err.message}`);
+    return;
+  }
 
   hideSendError();
   els.lastSentBanner.hidden = true;
@@ -341,8 +388,10 @@ async function onSend() {
 
   // Reconcile per-row status.
   for (const url of report.sent) setRowStatus(url, "ok", "sent");
-  for (const { url, reason } of report.failed) setRowStatus(url, "fail", reason || "failed");
-  for (const { url, reason } of report.skipped) setRowStatus(url, "skip", reason || "skipped");
+  for (const { url, reason } of report.failed)
+    setRowStatus(url, "fail", reason || "failed");
+  for (const { url, reason } of report.skipped)
+    setRowStatus(url, "skip", reason || "skipped");
 
   checkedRows().forEach((li) => {
     li.querySelector(".tab-checkbox").disabled = false;
@@ -372,7 +421,10 @@ async function onSend() {
   els.sendBtn.textContent = "Send to Kindle";
   updateSendButton();
 
-  if (report.sent.length === 0 && (report.failed.length > 0 || report.skipped.length > 0)) {
+  if (
+    report.sent.length === 0 &&
+    (report.failed.length > 0 || report.skipped.length > 0)
+  ) {
     showSendError(
       new Error(
         "Nothing was sent — every selected tab was skipped or failed. See the status next to each tab.",
@@ -392,7 +444,9 @@ async function closeTabsFor(sentUrls) {
   const sentSet = new Set(sentUrls);
   try {
     const openTabs = await chrome.tabs.query({});
-    const ids = openTabs.filter((t) => t.url && sentSet.has(t.url) && t.id != null).map((t) => t.id);
+    const ids = openTabs
+      .filter((t) => t.url && sentSet.has(t.url) && t.id != null)
+      .map((t) => t.id);
     if (ids.length > 0) await chrome.tabs.remove(ids);
   } catch {
     // Non-fatal: the email already sent successfully; closing tabs is a nicety.
@@ -425,7 +479,9 @@ function hideSendError() {
 }
 
 els.sendErrorDismiss.addEventListener("click", hideSendError);
-els.sendErrorSettings.addEventListener("click", () => chrome.runtime.openOptionsPage());
+els.sendErrorSettings.addEventListener("click", () =>
+  chrome.runtime.openOptionsPage(),
+);
 els.sendErrorReconnect.addEventListener("click", async () => {
   els.sendErrorReconnect.disabled = true;
   try {

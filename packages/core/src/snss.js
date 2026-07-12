@@ -100,11 +100,7 @@ class Cursor {
    */
   constructor(bytes, offset = 0, end = bytes.length) {
     this.bytes = bytes;
-    this.view = new DataView(
-      bytes.buffer,
-      bytes.byteOffset,
-      bytes.byteLength,
-    );
+    this.view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
     this.offset = offset;
     this.end = end;
   }
@@ -161,6 +157,7 @@ class Cursor {
   /** Pickled 8-bit string: uint32 length, then that many bytes, 4-byte aligned. */
   readPickledString() {
     const len = this.readU32LE();
+    this._checkStringLen(len);
     const padded = align4(len);
     const bytes = this.readBytes(padded);
     return utf8Decoder.decode(bytes.subarray(0, len));
@@ -170,9 +167,22 @@ class Cursor {
   readPickledString16() {
     const chars = this.readU32LE();
     const byteLen = chars * 2;
+    this._checkStringLen(byteLen);
     const padded = align4(byteLen);
     const bytes = this.readBytes(padded);
     return utf16leDecoder.decode(bytes.subarray(0, byteLen));
+  }
+
+  // Reject a declared string length that (a) can't fit in the remaining bytes,
+  // or (b) is near 2^32 where `align4`'s `(n+3) & ~3` would wrap through
+  // ToInt32 and yield a bogus small/negative padded size — which would let a
+  // corrupt/adversarial length silently decode garbage instead of throwing.
+  _checkStringLen(byteLen) {
+    if (byteLen < 0 || byteLen > this.remaining) {
+      throw new Error(
+        `invalid pickled string length ${byteLen} (only ${this.remaining} bytes remain)`,
+      );
+    }
   }
 }
 

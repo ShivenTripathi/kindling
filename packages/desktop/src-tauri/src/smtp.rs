@@ -32,12 +32,14 @@ pub fn send_smtp(opts: SmtpOpts) -> Result<(), String> {
     let epub_content_type = ContentType::parse("application/epub+zip")
         .map_err(|e| format!("invalid attachment content type: {e}"))?;
 
-    let attachment_part = Attachment::new(opts.attachment_name.clone())
-        .body(attachment_bytes, epub_content_type);
+    let attachment_part =
+        Attachment::new(opts.attachment_name.clone()).body(attachment_bytes, epub_content_type);
 
     let text_part = SinglePart::plain(opts.body_text.clone());
 
-    let multipart = MultiPart::mixed().singlepart(text_part).singlepart(attachment_part);
+    let multipart = MultiPart::mixed()
+        .singlepart(text_part)
+        .singlepart(attachment_part);
 
     let email = Message::builder()
         .from(

@@ -89,7 +89,10 @@ describe("runDigest — explicit urls (send now)", () => {
     // The attachment is a real EPUB (mimetype first + stored).
     const zip = unzipSync(mail.attachment);
     assert.ok("mimetype" in zip);
-    assert.equal(new TextDecoder().decode(zip["mimetype"]), "application/epub+zip");
+    assert.equal(
+      new TextDecoder().decode(zip["mimetype"]),
+      "application/epub+zip",
+    );
 
     // Ledger recorded the send.
     const ledger = ports.store["ledger"];
@@ -100,7 +103,9 @@ describe("runDigest — explicit urls (send now)", () => {
   test("excluded and unextractable urls are reported, not sent", async () => {
     const ports = makePorts({
       articleFor: (url) =>
-        url.includes("thin") ? { status: "skipped", reason: "too short" } : fakeArticle(url),
+        url.includes("thin")
+          ? { status: "skipped", reason: "too short" }
+          : fakeArticle(url),
     });
     const report = await runDigest({
       urls: [
@@ -152,5 +157,74 @@ describe("runDigest — scheduled path (staleness gate)", () => {
     });
     assert.deepEqual(report.sent, ["https://example.com/a"]);
     assert.equal(ports.sent.length, 1);
+  });
+});
+
+describe("runDigest — hardening regressions", () => {
+  test("a mid-run send failure persists the already-sent group (no duplicate re-send)", async () => {
+    const ports = makePorts();
+    // Two ~13MB articles → two separate digest groups (24MB cap). Repeated-char
+    // HTML compresses instantly so this stays fast despite the size.
+    const big = (u) => ({
+      status: "ok",
+      article: {
+        url: u,
+        title: "Big " + u,
+        contentHtml: "<p>" + "x".repeat(13_000_000) + "</p>",
+        textContent: "x",
+        wordCount: 5,
+      },
+    });
+    ports.content.getArticle = async (u) => big(u);
+    let sendCalls = 0;
+    ports.sender.send = async (mail) => {
+      sendCalls += 1;
+      if (sendCalls === 2) throw new Error("network blip");
+      return { id: "ok" };
+    };
+    const report = await runDigest({
+      urls: ["https://example.com/a", "https://example.com/b"],
+      ports,
+      config: CONFIG,
+    });
+    assert.equal(sendCalls, 2, "attempted both groups");
+    assert.equal(report.sent.length, 1, "only the first group counts as sent");
+    assert.ok(report.failed.length >= 1, "the failed group is reported");
+    // The successfully-sent url must be persisted with sentAt so it is NOT
+    // re-selected/re-sent next time.
+    const ledger = ports.store["ledger"];
+    const sentUrl = report.sent[0];
+    assert.ok(ledger.tabs[sentUrl].sentAt, "sent group's sentAt is persisted");
+  });
+
+  test("a hung LLM summarize() does not block the send (bounded by timeout)", async () => {
+    const ports = makePorts();
+    ports.llm = { summarize: () => new Promise(() => {}) }; // never resolves
+    const started = Date.now();
+    const report = await runDigest({
+      urls: ["https://example.com/a"],
+      ports,
+      config: { ...CONFIG, summaryTimeoutMs: 50 },
+    });
+    assert.equal(
+      report.sent.length,
+      1,
+      "the digest still sends despite the hung LLM",
+    );
+    assert.ok(Date.now() - started < 5000, "did not hang");
+  });
+
+  test("dedupe-dropped duplicate urls are reported, not silently dropped", async () => {
+    const ports = makePorts();
+    const report = await runDigest({
+      // same normalized url, different tracking param → one is a duplicate
+      urls: ["https://example.com/x?utm_source=a", "https://example.com/x"],
+      ports,
+      config: CONFIG,
+    });
+    assert.ok(
+      report.skipped.some((s) => /duplicate/i.test(s.reason)),
+      "the duplicate is surfaced in report.skipped",
+    );
   });
 });

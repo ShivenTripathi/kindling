@@ -204,7 +204,10 @@ async function postJson(providerName, fetchImpl, url, init) {
  * @returns {LlmProvider}
  */
 function createAnthropicProvider(config, fetchImpl) {
-  const baseUrl = (config.baseUrl || DEFAULT_ANTHROPIC_BASE_URL).replace(/\/+$/, "");
+  const baseUrl = (config.baseUrl || DEFAULT_ANTHROPIC_BASE_URL).replace(
+    /\/+$/,
+    "",
+  );
   const model = config.model || DEFAULT_ANTHROPIC_MODEL;
   const url = `${baseUrl}/v1/messages`;
 
@@ -412,7 +415,10 @@ export function createProvider(config, deps = {}) {
  * @returns {LlmProvider}
  */
 function createGeminiProvider(config, fetchImpl) {
-  const baseUrl = (config.baseUrl || DEFAULT_GEMINI_BASE_URL).replace(/\/+$/, "");
+  const baseUrl = (config.baseUrl || DEFAULT_GEMINI_BASE_URL).replace(
+    /\/+$/,
+    "",
+  );
   const model = config.model || DEFAULT_GEMINI_MODEL;
 
   /** @param {string} prompt @param {number} maxTokens */
@@ -442,11 +448,17 @@ function createGeminiProvider(config, fetchImpl) {
   return {
     async summarize(text, opts = {}) {
       const maxWords = opts.maxWords ?? 120;
-      const out = await complete(PROMPTS.summarize(truncate(text), maxWords), MAX_TOKENS.summarize);
+      const out = await complete(
+        PROMPTS.summarize(truncate(text), maxWords),
+        MAX_TOKENS.summarize,
+      );
       return out.trim();
     },
     async classify(text, opts = {}) {
-      const out = await complete(PROMPTS.classify(truncate(text), opts.taxonomy), MAX_TOKENS.classify);
+      const out = await complete(
+        PROMPTS.classify(truncate(text), opts.taxonomy),
+        MAX_TOKENS.classify,
+      );
       return parseTagList(out);
     },
     async synthesize(items, opts = {}) {
@@ -455,7 +467,10 @@ function createGeminiProvider(config, fetchImpl) {
         title: truncate(i.title, 200),
         summary: truncate(i.summary, 600),
       }));
-      const out = await complete(PROMPTS.synthesize(capped, period), MAX_TOKENS.synthesize);
+      const out = await complete(
+        PROMPTS.synthesize(capped, period),
+        MAX_TOKENS.synthesize,
+      );
       return out.trim();
     },
     info: { provider: "gemini", model, browserUsable: true },

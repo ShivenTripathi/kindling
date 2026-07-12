@@ -5,24 +5,40 @@
 // (content source, sender, storage, clock), so the same tested flow runs in a
 // browser service worker and in Node.
 
-import { screenUrl, dedupe, normalizeUrl } from './filter.js';
-import { loadLedger, saveLedger, recordSnapshot, selectStale, recordDigest } from './ledger.js';
-import { buildEpub, splitForSizeLimit } from './epub/index.js';
-import { systemClock } from './ports.js';
+import { screenUrl, dedupe, normalizeUrl } from "./filter.js";
+import {
+  loadLedger,
+  saveLedger,
+  recordSnapshot,
+  selectStale,
+  recordDigest,
+} from "./ledger.js";
+import { buildEpub, splitForSizeLimit } from "./epub/index.js";
+import { systemClock } from "./ports.js";
 
-export * from './filter.js';
-export * from './ledger.js';
-export { buildEpub, splitForSizeLimit } from './epub/index.js';
-export { extractFromDocument, extractFromHtml } from './extract/index.js';
-export { createGmailApiSender, buildMimeMessage } from './send/index.js';
-export { computeInsights, tagTopics } from './insights/index.js';
-export { createProvider } from './llm/index.js';
-export { systemClock } from './ports.js';
+export * from "./filter.js";
+export * from "./ledger.js";
+export { buildEpub, splitForSizeLimit } from "./epub/index.js";
+export { extractFromDocument, extractFromHtml } from "./extract/index.js";
+export { createGmailApiSender, buildMimeMessage } from "./send/index.js";
+export { computeInsights, tagTopics } from "./insights/index.js";
+export { createProvider } from "./llm/index.js";
+export { systemClock } from "./ports.js";
 
 /** A short, human digest id like "2026-07-12-a". */
 function digestId(date, suffixIndex) {
   const d = date.toISOString().slice(0, 10);
   return `${d}-${String.fromCharCode(97 + suffixIndex)}`;
+}
+
+/** Reject if `promise` doesn't settle within `ms`. Used to bound best-effort
+ * LLM calls so a never-resolving endpoint can't stall the whole pipeline. */
+function withTimeout(promise, ms) {
+  let timer;
+  const timeout = new Promise((_resolve, reject) => {
+    timer = setTimeout(() => reject(new Error(`timed out after ${ms}ms`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
 /**
@@ -58,7 +74,7 @@ function digestId(date, suffixIndex) {
  *     kindleEmail: string, senderEmail: string,
  *     staleHours?: number, minWords?: number,
  *     filters?: {block?:string[],allow?:string[]},
- *     title?: string, disableWayback?: boolean,
+ *     title?: string, disableWayback?: boolean, summaryTimeoutMs?: number,
  *   },
  * }} args
  * @returns {Promise<DigestReport>}
@@ -67,7 +83,7 @@ export async function runDigest(args) {
   const { ports, config } = args;
   const clock = ports.clock ?? systemClock;
   const now = clock.now();
-  const title = config.title ?? 'Tab Digest';
+  const title = config.title ?? "Tab Digest";
   const staleHours = config.staleHours ?? 48;
   const filters = config.filters ?? {};
 
@@ -87,9 +103,20 @@ export async function runDigest(args) {
     candidateUrls = selectStale(ledger, staleHours, now);
   }
 
-  // Screen (exclusion list / SSRF / local) + dedupe.
+  // Screen (exclusion list / SSRF / local) + dedupe. Surface dropped duplicates
+  // so nothing vanishes silently (invariant: nothing silently dropped).
+  const deduped = dedupe(candidateUrls);
+  const keptRaw = new Set(deduped); // dedupe keeps the first raw url per normalized form
+  for (const url of candidateUrls) {
+    if (!keptRaw.has(url)) {
+      report.skipped.push({
+        url,
+        reason: "duplicate of an already-included URL",
+      });
+    }
+  }
   const screened = [];
-  for (const url of dedupe(candidateUrls)) {
+  for (const url of deduped) {
     const { include, reason } = screenUrl(url, filters);
     if (include) screened.push(url);
     else report.skipped.push({ url, reason });
@@ -107,12 +134,15 @@ export async function runDigest(args) {
         disableWayback: config.disableWayback,
       });
     } catch (err) {
-      result = { status: 'failed', reason: `content source error: ${err.message}` };
+      result = {
+        status: "failed",
+        reason: `content source error: ${err.message}`,
+      };
     }
-    if (result && result.status === 'ok' && result.article) {
+    if (result && result.status === "ok" && result.article) {
       articles.push(result.article);
     } else {
-      const reason = (result && result.reason) || 'could not extract';
+      const reason = (result && result.reason) || "could not extract";
       failedUrls.push(url);
       report.failed.push({ url, reason });
     }
@@ -123,10 +153,17 @@ export async function runDigest(args) {
   // now — this is the only moment we have the full text. Stored on the ledger so
   // the dashboard can show summaries + a monthly synthesis. Bring-your-own-key,
   // local-only; a summarization failure never blocks the send.
-  if (ports.llm && typeof ports.llm.summarize === 'function') {
+  if (ports.llm && typeof ports.llm.summarize === "function") {
+    const summaryTimeoutMs = config.summaryTimeoutMs ?? 20000;
     for (const article of articles) {
       try {
-        article.summary = await ports.llm.summarize(article.textContent || article.contentHtml || '');
+        // Bounded: a hung/slow LLM endpoint (e.g. a stalled local Ollama)
+        // must never block the send. try/catch alone can't rescue a promise
+        // that simply never settles, so race it against a timeout.
+        article.summary = await withTimeout(
+          ports.llm.summarize(article.textContent || article.contentHtml || ""),
+          summaryTimeoutMs,
+        );
       } catch {
         /* summaries are best-effort; keep sending */
       }
@@ -136,32 +173,55 @@ export async function runDigest(args) {
   // Ensure a ledger tab record exists for every article being sent (the
   // explicit-urls "send now" path may not have snapshotted them), so sentAt,
   // summaries, and later reopen-tracking all have somewhere to attach.
-  ledger = recordSnapshot(ledger, articles.map((a) => ({ url: a.url, title: a.title })), now);
+  ledger = recordSnapshot(
+    ledger,
+    articles.map((a) => ({ url: a.url, title: a.title })),
+    now,
+  );
 
-  // Build EPUB(s), respecting the 50MB Kindle email cap.
+  // Build EPUB(s), respecting the Kindle/Gmail size cap.
   const groups = splitForSizeLimit(articles);
   for (let i = 0; i < groups.length; i++) {
     const id = digestId(now, i);
-    const built = await buildEpub(groups[i], {
-      title,
-      date: now,
-      failedUrls: i === 0 ? failedUrls : [],
-      dom: ports.dom, // browser: undefined → uses globals; Node: jsdom-backed provider
-      fetchImage: ports.fetchImage,
-    });
+    let built;
+    try {
+      built = await buildEpub(groups[i], {
+        title,
+        date: now,
+        failedUrls: i === 0 ? failedUrls : [],
+        dom: ports.dom, // browser: undefined → uses globals; Node: jsdom-backed provider
+        fetchImage: ports.fetchImage,
+      });
 
-    await ports.sender.send({
-      to: config.kindleEmail,
-      from: config.senderEmail,
-      subject: groups.length > 1 ? `${title} ${id}` : title,
-      attachment: built.bytes,
-      attachmentName: `${id}.epub`,
-    });
+      await ports.sender.send({
+        to: config.kindleEmail,
+        from: config.senderEmail,
+        subject: groups.length > 1 ? `${title} ${id}` : title,
+        attachment: built.bytes,
+        attachmentName: `${id}.epub`,
+      });
+    } catch (err) {
+      // This group's build/send failed. Record the failure and STOP — but the
+      // ledger for any earlier group that DID send is already persisted below
+      // (per-group save), so those won't be re-sent on the next run.
+      for (const a of groups[i])
+        report.failed.push({
+          url: a.url,
+          reason: `send failed: ${err.message}`,
+        });
+      break;
+    }
 
     const urls = groups[i].map((a) => a.url);
     ledger = recordDigest(
       ledger,
-      { id, sentAt: now.toISOString(), articles: built.articleCount, sizeBytes: built.sizeBytes, urls },
+      {
+        id,
+        sentAt: now.toISOString(),
+        articles: built.articleCount,
+        sizeBytes: built.sizeBytes,
+        urls,
+      },
       now,
     );
     // Persist per-article summaries + word counts onto the ledger records so
@@ -169,15 +229,23 @@ export async function runDigest(args) {
     for (const a of groups[i]) {
       const rec = ledger.tabs[normalizeUrl(a.url)];
       if (rec) {
-        if (typeof a.wordCount === 'number') rec.wordCount = a.wordCount;
+        if (typeof a.wordCount === "number") rec.wordCount = a.wordCount;
         if (a.summary) rec.summary = a.summary;
       }
     }
+    // Persist INCREMENTALLY, right after each group's send succeeds — so a
+    // later group's failure can never lose an already-delivered group's record
+    // (which would cause a duplicate re-send on the next run).
+    await saveLedger(ports.storage, ledger);
     report.sent.push(...urls);
-    report.digests.push({ id, articles: built.articleCount, sizeBytes: built.sizeBytes, epubBytes: built.bytes });
+    report.digests.push({
+      id,
+      articles: built.articleCount,
+      sizeBytes: built.sizeBytes,
+      epubBytes: built.bytes,
+    });
   }
 
-  await saveLedger(ports.storage, ledger);
   return report;
 }
 

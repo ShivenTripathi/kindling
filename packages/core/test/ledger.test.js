@@ -70,7 +70,9 @@ describe("loadLedger", () => {
   });
 
   test("malformed tabs field (not an object) is backfilled", async () => {
-    const storage = makeFakeStorage({ ledger: { tabs: "corrupt", digests: [] } });
+    const storage = makeFakeStorage({
+      ledger: { tabs: "corrupt", digests: [] },
+    });
     const loaded = await loadLedger(storage);
     assert.deepEqual(loaded.tabs, {});
   });

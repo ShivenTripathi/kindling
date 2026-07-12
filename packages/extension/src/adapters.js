@@ -72,10 +72,11 @@ async function findOpenTab(url) {
  * (minWords, the extraction hook) is passed in / already on `window`.
  * @param {number} minWords */
 function readExtractResult(minWords) {
-   
   window.__kindlingMinWords = minWords;
-   
-  return window.__kindlingExtract ? window.__kindlingExtract() : { status: "failed", reason: "content-extract.js did not load" };
+
+  return window.__kindlingExtract
+    ? window.__kindlingExtract()
+    : { status: "failed", reason: "content-extract.js did not load" };
 }
 
 /** @returns {import('@kindling/core/ports').ContentSource} */
@@ -93,7 +94,8 @@ export function makeContentSource() {
           files: ["content-extract.js"],
         });
 
-        const minWords = typeof opts.minWords === "number" ? opts.minWords : 300;
+        const minWords =
+          typeof opts.minWords === "number" ? opts.minWords : 300;
         const [injection] = await chrome.scripting.executeScript({
           target: { tabId: tab.id },
           func: readExtractResult,
@@ -109,7 +111,10 @@ export function makeContentSource() {
         // chrome:// / chrome-extension:// / the Chrome Web Store / PDF
         // viewer / crashed-tab pages all reject scripting injection — never
         // throw out of a ContentSource, always resolve with a reason.
-        return { status: "failed", reason: `injection failed: ${err && err.message}` };
+        return {
+          status: "failed",
+          reason: `injection failed: ${err && err.message}`,
+        };
       }
     },
   };
@@ -142,12 +147,6 @@ const GMAIL_SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send";
 const USERINFO_EMAIL_SCOPE = "https://www.googleapis.com/auth/userinfo.email";
 const SCOPES = [GMAIL_SEND_SCOPE, USERINFO_EMAIL_SCOPE];
 
-// In-memory access-token cache for the launchWebAuthFlow path (Chrome's native
-// getAuthToken does its own caching/refresh). Implicit-flow tokens are short-
-// lived and can't be silently refreshed, so interactive re-consent may be
-// needed after they expire — documented as a cross-browser limitation.
-let webAuthCache = { token: "", expiresAt: 0 };
-
 /**
  * Get a Gmail access token. Default path is Chrome's native
  * `chrome.identity.getAuthToken` (uses the manifest oauth2 client; supports
@@ -160,7 +159,8 @@ let webAuthCache = { token: "", expiresAt: 0 };
  */
 export async function getAuthToken(interactive = true) {
   const config = await loadConfig();
-  const byoClientId = config.oauthClientId && String(config.oauthClientId).trim();
+  const byoClientId =
+    config.oauthClientId && String(config.oauthClientId).trim();
   const nativeAvailable =
     typeof chrome !== "undefined" &&
     chrome.identity &&
@@ -175,27 +175,40 @@ export async function getAuthToken(interactive = true) {
 /** Chrome's native token flow (shared manifest client). */
 function getAuthTokenNative(interactive) {
   return new Promise((resolve, reject) => {
-    chrome.identity.getAuthToken({ interactive, scopes: SCOPES }, (tokenResult) => {
-      if (chrome.runtime.lastError) {
-        reject(new Error(chrome.runtime.lastError.message));
-        return;
-      }
-      const token = typeof tokenResult === "string" ? tokenResult : tokenResult && tokenResult.token;
-      if (!token) {
-        reject(new Error("no auth token returned"));
-        return;
-      }
-      resolve(token);
-    });
+    chrome.identity.getAuthToken(
+      { interactive, scopes: SCOPES },
+      (tokenResult) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+          return;
+        }
+        const token =
+          typeof tokenResult === "string"
+            ? tokenResult
+            : tokenResult && tokenResult.token;
+        if (!token) {
+          reject(new Error("no auth token returned"));
+          return;
+        }
+        resolve(token);
+      },
+    );
   });
 }
 
 /** Cross-browser / bring-your-own-client flow via launchWebAuthFlow (implicit
  * grant). Requires `config.oauthClientId`. */
+const WEBAUTH_CACHE_KEY = "__webauth_token__";
+
 async function getAuthTokenWebFlow(clientId, interactive) {
   const now = Date.now();
-  if (webAuthCache.token && webAuthCache.expiresAt - 60_000 > now) {
-    return webAuthCache.token;
+  // Cache in chrome.storage (not a module variable): each context — popup,
+  // offscreen, service worker — bundles its own copy of this module, so a
+  // module-local cache wouldn't be shared, and a scheduled send in the offscreen
+  // doc could never see the token obtained interactively in the popup.
+  const cached = (await chromeStorage.get(WEBAUTH_CACHE_KEY)) || {};
+  if (cached.token && cached.expiresAt - 60_000 > now) {
+    return cached.token;
   }
   if (!clientId) {
     throw new Error(
@@ -230,7 +243,10 @@ async function getAuthTokenWebFlow(clientId, interactive) {
   const token = params.get("access_token");
   if (!token) throw new Error("no access token in the OAuth redirect");
   const expiresIn = Number(params.get("expires_in") || 3600) * 1000;
-  webAuthCache = { token, expiresAt: Date.now() + expiresIn };
+  await chromeStorage.set(WEBAUTH_CACHE_KEY, {
+    token,
+    expiresAt: Date.now() + expiresIn,
+  });
   return token;
 }
 

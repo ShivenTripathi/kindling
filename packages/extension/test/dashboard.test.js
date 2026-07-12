@@ -6,7 +6,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { tagTopics } from "@kindling/core/insights";
-import { aggregateTopics, formatReadingTime, RANGE_PRESETS, digestHistory } from "../src/dashboard/topics.js";
+import {
+  aggregateTopics,
+  formatReadingTime,
+  RANGE_PRESETS,
+  digestHistory,
+} from "../src/dashboard/topics.js";
 
 function makeLedger() {
   return {
@@ -91,7 +96,9 @@ test("digestHistory sorts newest-first and flags reopened urls", () => {
   assert.equal(history[0].id, "d1"); // newer first
   assert.equal(history[1].id, "d0");
 
-  const urls = Object.fromEntries(history[0].urls.map((u) => [u.url, u.reopened]));
+  const urls = Object.fromEntries(
+    history[0].urls.map((u) => [u.url, u.reopened]),
+  );
   assert.equal(urls["https://github.com/foo/bar"], true);
   assert.equal(urls["https://nature.com/articles/x"], false);
 });

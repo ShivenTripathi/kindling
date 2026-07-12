@@ -35,7 +35,10 @@ import { zipSync } from "fflate";
 // XHTML; linkedom's toString does NOT, so it can't be used for EPUB output).
 function resolveDom(injected) {
   if (injected) return injected;
-  if (typeof DOMParser !== "undefined" && typeof XMLSerializer !== "undefined") {
+  if (
+    typeof DOMParser !== "undefined" &&
+    typeof XMLSerializer !== "undefined"
+  ) {
     return {
       parseHtml: (html) => new DOMParser().parseFromString(html, "text/html"),
       serialize: (node) => new XMLSerializer().serializeToString(node),
@@ -69,7 +72,12 @@ function resolveDom(injected) {
  *   // (CLI/desktop/tests) must inject a jsdom-backed provider.
  */
 
-const DEFAULT_MAX_BYTES = 52428800; // 50 MiB, the Send-to-Kindle cap
+// 24 MiB of raw EPUB. Amazon Send-to-Kindle allows 50 MiB, but the binding
+// constraint is the SEND transport: the Gmail API's messages.send accepts a
+// ~35 MB request, and base64-encoding the attachment inflates it ~1.37× — so a
+// 25 MiB EPUB becomes a ~34 MB request. 24 MiB keeps us safely under that (and
+// under typical SMTP limits) so a large digest never bounces.
+const DEFAULT_MAX_BYTES = 24 * 1024 * 1024;
 const DEFAULT_MAX_TOTAL_IMAGE_BYTES = 20 * 1024 * 1024;
 const DEFAULT_MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
@@ -85,11 +93,13 @@ const EPUB_NS = "http://www.idpf.org/2007/ops";
  * @param {EpubOptions} opts
  * @returns {Promise<{bytes: Uint8Array, sizeBytes: number, articleCount: number}>} */
 export async function buildEpub(articles, opts) {
-  if (!opts || !opts.title) throw new Error("buildEpub: opts.title is required");
+  if (!opts || !opts.title)
+    throw new Error("buildEpub: opts.title is required");
 
   const date = opts.date ?? new Date();
   const failedUrls = opts.failedUrls ?? [];
-  const fetchImage = typeof opts.fetchImage === "function" ? opts.fetchImage : null;
+  const fetchImage =
+    typeof opts.fetchImage === "function" ? opts.fetchImage : null;
   const fetchImages = (opts.fetchImages ?? true) && fetchImage !== null;
   const dom = resolveDom(opts.dom);
   const maxTotalImageBytes =
@@ -152,7 +162,12 @@ export async function buildEpub(articles, opts) {
     renderCoverXhtml(opts.title, dateLong, articles.length),
     date,
   );
-  addFile(files, "OEBPS/nav.xhtml", renderNavXhtml(chapters, hasFailedPage), date);
+  addFile(
+    files,
+    "OEBPS/nav.xhtml",
+    renderNavXhtml(chapters, hasFailedPage),
+    date,
+  );
   addFile(
     files,
     "OEBPS/toc.ncx",
@@ -203,7 +218,7 @@ export async function buildEpub(articles, opts) {
 
 /** Split articles into groups that each fit under maxBytes when built.
  * @param {Article[]} articles
- * @param {number} [maxBytes=52428800]
+ * @param {number} [maxBytes=25165824]
  * @returns {Article[][]} */
 export function splitForSizeLimit(articles, maxBytes = DEFAULT_MAX_BYTES) {
   const FIXED_OVERHEAD_BYTES = 64 * 1024; // mimetype, container, opf, nav, ncx, css, cover
@@ -347,7 +362,12 @@ function serializeInner(dom, el) {
  * and remaining-budget caps as before. `opts.fetchImage` is expected to be an
  * SSRF-guarded implementation on platforms with network access (cli/desktop);
  * core itself never calls a bare fetch(). */
-async function fetchImageSafely(fetchImage, url, maxImageBytes, remainingBudget) {
+async function fetchImageSafely(
+  fetchImage,
+  url,
+  maxImageBytes,
+  remainingBudget,
+) {
   const cap = Math.min(maxImageBytes, remainingBudget);
   if (cap <= 0) return null;
   let result;
@@ -938,7 +958,10 @@ function deterministicBookId(date, urls) {
     fnv1a32(seed, 0x85ebca6b),
     fnv1a32(seed, 0xc2b2ae35),
   ];
-  const hex = words.map((w) => w.toString(16).padStart(8, "0")).join("").split("");
+  const hex = words
+    .map((w) => w.toString(16).padStart(8, "0"))
+    .join("")
+    .split("");
   hex[12] = "5"; // version nibble (name-based, informational)
   hex[16] = ((parseInt(hex[16], 16) & 0x3) | 0x8).toString(16); // RFC 4122 variant bits
   const s = hex.join("");

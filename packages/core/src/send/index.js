@@ -36,7 +36,7 @@ export function bytesToBase64(bytes) {
     const chunk = bytes.subarray(i, i + chunkSize);
     binary += String.fromCharCode.apply(null, chunk);
   }
-   
+
   return btoa(binary);
 }
 

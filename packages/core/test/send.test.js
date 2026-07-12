@@ -103,11 +103,7 @@ describe("buildMimeMessage", () => {
   });
 
   test("rejects quotes, semicolons, and backslashes in attachmentName", () => {
-    for (const bad of [
-      'evil".epub',
-      "evil;x=1.epub",
-      "evil\\path.epub",
-    ]) {
+    for (const bad of ['evil".epub', "evil;x=1.epub", "evil\\path.epub"]) {
       assert.throws(() =>
         buildMimeMessage({
           from: "sender@example.com",
@@ -222,7 +218,11 @@ describe("createGmailApiSender", () => {
       if (calls < 3) {
         return { ok: false, status: 429, text: async () => "rate limited" };
       }
-      return { ok: true, status: 200, json: async () => ({ id: "ok-after-retry" }) };
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ id: "ok-after-retry" }),
+      };
     };
     const sender = createGmailApiSender({
       getToken: async () => "tok",

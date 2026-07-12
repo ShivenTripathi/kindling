@@ -7,7 +7,12 @@
 // context that can call chrome.scripting.executeScript).
 
 import { runDigest } from "@kindling/core";
-import { chromeStorage, loadConfig, makeGmailSender, makeLlmProvider } from "../adapters.js";
+import {
+  chromeStorage,
+  loadConfig,
+  makeGmailSender,
+  makeLlmProvider,
+} from "../adapters.js";
 
 const TAB_AGES_KEY = "tabAges";
 
@@ -19,12 +24,20 @@ function makeProxiedContentSource() {
   return {
     async getArticle(url, opts = {}) {
       try {
-        const result = await chrome.runtime.sendMessage({ type: "EXTRACT", url, opts });
-        if (!result) return { status: "failed", reason: "no response from background" };
+        const result = await chrome.runtime.sendMessage({
+          type: "EXTRACT",
+          url,
+          opts,
+        });
+        if (!result)
+          return { status: "failed", reason: "no response from background" };
         if (result.error) return { status: "failed", reason: result.error };
         return result;
       } catch (err) {
-        return { status: "failed", reason: `extraction proxy error: ${err && err.message}` };
+        return {
+          status: "failed",
+          reason: `extraction proxy error: ${err && err.message}`,
+        };
       }
     },
   };
@@ -33,7 +46,10 @@ function makeProxiedContentSource() {
 async function runScheduledDigest() {
   const config = await loadConfig();
   const tabAges = (await chromeStorage.get(TAB_AGES_KEY)) || {};
-  const openTabs = Object.values(tabAges).map((record) => ({ url: record.url, title: record.title }));
+  const openTabs = Object.values(tabAges).map((record) => ({
+    url: record.url,
+    title: record.title,
+  }));
 
   const ports = {
     content: makeProxiedContentSource(),
@@ -51,6 +67,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   runScheduledDigest()
     .then(sendResponse)
-    .catch((err) => sendResponse({ error: String((err && err.message) || err) }));
+    .catch((err) =>
+      sendResponse({ error: String((err && err.message) || err) }),
+    );
   return true;
 });
