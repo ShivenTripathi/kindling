@@ -1,0 +1,25 @@
+{
+  "name": "@kindling/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Kindling desktop app (Tauri) — runs the digest even when the browser is closed, with SMTP or Gmail send.",
+  "scripts": {
+    "build:ui": "node build.mjs",
+    "watch:ui": "node build.mjs --watch",
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build"
+  },
+  "dependencies": {
+    "@kindling/core": "*",
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-http": "^2",
+    "@tauri-apps/plugin-fs": "^2"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "esbuild": "^0.23.0"
+  },
+  "license": "MIT"
+}

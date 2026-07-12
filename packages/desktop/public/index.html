@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kindling</title>
+    <link rel="stylesheet" href="app.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">🔥</span>
+        <span>Kindling</span>
+      </div>
+      <div class="topbar-actions">
+        <label class="profile-picker">
+          <span class="sr-only">Chrome profile</span>
+          <select id="profile-select" aria-label="Chrome profile"></select>
+        </label>
+        <button id="settings-btn" class="icon-btn" type="button" aria-label="Settings" aria-expanded="false" aria-controls="settings-panel">
+          ⚙︎
+        </button>
+      </div>
+    </header>
+
+    <main id="main-view">
+      <section id="status-banner" class="banner" hidden></section>
+
+      <section class="toolbar">
+        <label class="toggle">
+          <input type="checkbox" id="send-all-toggle" />
+          <span>Send all open tabs (ignore staleness)</span>
+        </label>
+        <button id="refresh-btn" class="link-btn" type="button">Refresh</button>
+      </section>
+
+      <section id="empty-view" class="empty-state" hidden>
+        <p>No stale tabs yet.</p>
+        <p class="muted">Tabs open for a while will show up here, ready to send.</p>
+      </section>
+
+      <section id="loading-view" class="empty-state">
+        <p>Loading tabs…</p>
+      </section>
+
+      <ul id="tab-list" class="tab-list" hidden></ul>
+
+      <section class="progress" id="progress-view" hidden>
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+        <p id="progress-label" class="muted"></p>
+      </section>
+
+      <section id="result-view" class="result-view" hidden></section>
+    </main>
+
+    <footer class="footer">
+      <span id="count-label" class="muted"></span>
+      <button id="send-btn" class="primary-btn" type="button">Send to Kindle</button>
+    </footer>
+
+    <aside id="settings-panel" class="settings-panel" hidden aria-label="Settings">
+      <div class="settings-header">
+        <h2>Settings</h2>
+        <button id="settings-close" class="icon-btn" type="button" aria-label="Close settings">✕</button>
+      </div>
+
+      <form id="settings-form" class="settings-form">
+        <label class="field">
+          <span>Chrome profile</span>
+          <select id="s-profile-select"></select>
+        </label>
+
+        <label class="field">
+          <span>Kindle email address</span>
+          <input id="s-kindle-email" type="email" placeholder="you@kindle.com" autocomplete="off" />
+        </label>
+
+        <label class="field">
+          <span>Sender email (must be approved in Amazon's Send-to-Kindle settings)</span>
+          <input id="s-sender-email" type="email" placeholder="you@gmail.com" autocomplete="off" />
+        </label>
+
+        <fieldset class="fieldset">
+          <legend>SMTP</legend>
+          <label class="field">
+            <span>Host</span>
+            <input id="s-smtp-host" type="text" placeholder="smtp.gmail.com" autocomplete="off" />
+          </label>
+          <label class="field field-inline">
+            <span>Port</span>
+            <input id="s-smtp-port" type="number" placeholder="465" autocomplete="off" />
+          </label>
+          <label class="field">
+            <span>Username</span>
+            <input id="s-smtp-username" type="text" autocomplete="off" />
+          </label>
+          <label class="field">
+            <span>App password</span>
+            <input id="s-smtp-password" type="password" autocomplete="off" />
+          </label>
+          <p class="hint">
+            Use a Gmail app password (myaccount.google.com/apppasswords) — stored locally only.
+          </p>
+        </fieldset>
+
+        <label class="field field-inline">
+          <span>Stale after (hours)</span>
+          <input id="s-stale-hours" type="number" min="1" step="1" />
+        </label>
+
+        <label class="field field-inline">
+          <span>Minimum article length (words)</span>
+          <input id="s-min-words" type="number" min="0" step="10" />
+        </label>
+
+        <label class="field">
+          <span>Auto-run every (minutes, 0 = off)</span>
+          <input id="s-interval-minutes" type="number" min="0" step="5" />
+        </label>
+
+        <div class="settings-actions">
+          <button type="submit" class="primary-btn">Save settings</button>
+          <span id="settings-saved" class="muted" hidden>Saved.</span>
+        </div>
+      </form>
+    </aside>
+    <div id="settings-backdrop" class="backdrop" hidden></div>
+
+    <script type="module" src="main.js"></script>
+  </body>
+</html>

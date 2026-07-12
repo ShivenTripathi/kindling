@@ -13,3 +13,7 @@ scratch/
 
 # Build artifacts
 packages/*/dist/
+
+# Rust / Tauri build artifacts
+packages/desktop/src-tauri/target/
+packages/desktop/src-tauri/gen/

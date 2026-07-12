@@ -35,8 +35,8 @@ export default [
     },
   },
   {
-    // Extension code runs in the browser with the chrome.* API.
-    files: ['extension/**/*.js', 'packages/extension/src/**/*.js'],
+    // Extension + desktop-webview code runs in the browser (chrome.* / Tauri).
+    files: ['extension/**/*.js', 'packages/extension/src/**/*.js', 'packages/desktop/src/**/*.js'],
     languageOptions: {
       ecmaVersion: 2023,
       sourceType: 'module',

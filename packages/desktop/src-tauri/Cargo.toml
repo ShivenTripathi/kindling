@@ -1,0 +1,30 @@
+[package]
+name = "kindling-desktop"
+version = "0.1.0"
+description = "Kindling desktop app (Tauri) — send stale Chrome tabs to your Kindle"
+authors = ["Kindling"]
+license = "MIT"
+repository = ""
+edition = "2021"
+rust-version = "1.77.2"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.6.3" }
+
+[dependencies]
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+log = "0.4"
+tauri = { version = "2.11.3" }
+tauri-plugin-log = "2"
+tauri-plugin-http = "2"
+tauri-plugin-fs = "2"
+lettre = { version = "0.11", default-features = false, features = ["smtp-transport", "builder", "rustls-tls", "hostname"] }
+base64 = "0.22"
+dirs = "5"

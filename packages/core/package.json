@@ -12,7 +12,8 @@
     "./insights": "./src/insights/index.js",
     "./send": "./src/send/index.js",
     "./llm": "./src/llm/index.js",
-    "./ports": "./src/ports.js"
+    "./ports": "./src/ports.js",
+    "./snss": "./src/snss.js"
   },
   "engines": {
     "node": ">=20"
