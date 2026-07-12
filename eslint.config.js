@@ -36,7 +36,7 @@ export default [
   },
   {
     // Extension code runs in the browser with the chrome.* API.
-    files: ['extension/**/*.js'],
+    files: ['extension/**/*.js', 'packages/extension/src/**/*.js'],
     languageOptions: {
       ecmaVersion: 2023,
       sourceType: 'module',
@@ -53,16 +53,47 @@ export default [
         clearInterval: 'readonly',
         fetch: 'readonly',
         URL: 'readonly',
+        URLSearchParams: 'readonly',
+        TextEncoder: 'readonly',
+        TextDecoder: 'readonly',
+        btoa: 'readonly',
+        atob: 'readonly',
         navigator: 'readonly',
+        location: 'readonly',
+        CSS: 'readonly',
+        self: 'readonly',
+        globalThis: 'readonly',
+        DOMParser: 'readonly',
+        XMLSerializer: 'readonly',
+        AbortController: 'readonly',
+        queueMicrotask: 'readonly',
       },
     },
     rules: {
       'no-undef': 'error',
       'no-var': 'error',
       'prefer-const': 'warn',
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
     },
   },
   {
-    ignores: ['node_modules/**', '**/*.epub', 'coverage/**'],
+    // core is browser-safe library code — same globals it may rely on.
+    files: ['packages/core/src/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2023,
+      sourceType: 'module',
+      globals: {
+        fetch: 'readonly', URL: 'readonly', TextEncoder: 'readonly', TextDecoder: 'readonly',
+        btoa: 'readonly', atob: 'readonly', Buffer: 'readonly', DOMParser: 'readonly',
+        XMLSerializer: 'readonly', setTimeout: 'readonly', console: 'readonly', globalThis: 'readonly',
+      },
+    },
+    rules: {
+      'no-undef': 'error', 'no-var': 'error', 'prefer-const': 'warn',
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+    },
+  },
+  {
+    ignores: ['node_modules/**', '**/*.epub', 'coverage/**', '**/dist/**'],
   },
 ];

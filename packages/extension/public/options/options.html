@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Kindling settings</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">🔥</span>
+        <span class="brand-name">Kindling settings</span>
+      </div>
+    </header>
+
+    <main>
+      <form id="settings-form">
+        <section class="card">
+          <h2>Kindle</h2>
+          <div class="field">
+            <label for="kindle-email">Send-to-Kindle address</label>
+            <input id="kindle-email" type="email" placeholder="you@kindle.com" autocomplete="off" />
+            <p class="hint">Must end in <code>kindle.com</code> or <code>free.kindle.com</code>.</p>
+          </div>
+          <div class="field">
+            <label for="sender-email">Sender (from Google)</label>
+            <div class="connect-row">
+              <input id="sender-email" type="email" readonly placeholder="Not connected" />
+              <button id="reconnect-google" class="btn btn-secondary btn-sm" type="button">
+                Connect / reconnect
+              </button>
+            </div>
+            <p class="hint">
+              Whitelist this address in Amazon's Personal Document Settings so
+              your Kindle accepts mail from it.
+            </p>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>Timing</h2>
+          <div class="field">
+            <label for="stale-hours">Send a tab after it's been open for</label>
+            <div class="inline-input">
+              <input id="stale-hours" type="number" min="1" max="720" step="1" />
+              <span>hours</span>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="toggle-label">
+              <input id="schedule-enabled" type="checkbox" />
+              <span>Send automatically on a schedule</span>
+            </label>
+          </div>
+          <div class="field" id="schedule-interval-field">
+            <label for="schedule-minutes">Check every</label>
+            <div class="inline-input">
+              <input id="schedule-minutes" type="number" min="15" step="1" />
+              <span>minutes</span>
+            </div>
+            <p class="hint">
+              When a scheduled check finds stale tabs, Kindling builds and
+              sends the digest in the background.
+            </p>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>Exclusions</h2>
+          <div class="field">
+            <label for="block-list">Never send from these domains</label>
+            <textarea id="block-list" rows="4" placeholder="example.com&#10;mail.google.com"></textarea>
+            <p class="hint">One domain per line.</p>
+          </div>
+          <div class="field">
+            <label for="allow-list">Always allow these domains</label>
+            <textarea id="allow-list" rows="3" placeholder="example.com"></textarea>
+            <p class="hint">Overrides the default exclusion list (used sparingly).</p>
+          </div>
+          <div class="field">
+            <label class="toggle-label">
+              <input id="disable-wayback" type="checkbox" />
+              <span>Disable the archive.org fallback for pages that fail to load</span>
+            </label>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>AI insights <span class="badge">optional, local-only</span></h2>
+          <p class="hint">
+            Bring your own API key to get summaries and topic tags. The key
+            stays on this machine and is only used to call the endpoint you
+            choose below — Kindling has no server.
+          </p>
+          <div class="field">
+            <label for="llm-provider">Provider</label>
+            <select id="llm-provider">
+              <option value="anthropic">Anthropic</option>
+              <option value="openai-compatible">OpenAI-compatible (OpenAI, OpenRouter, Ollama, LM Studio…)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="llm-api-key">API key</label>
+            <input id="llm-api-key" type="password" autocomplete="off" placeholder="sk-…" />
+          </div>
+          <div class="field">
+            <label for="llm-base-url">Base URL <span class="optional">(optional)</span></label>
+            <input id="llm-base-url" type="text" placeholder="https://api.anthropic.com" />
+          </div>
+          <div class="field">
+            <label for="llm-model">Model <span class="optional">(optional)</span></label>
+            <input id="llm-model" type="text" placeholder="claude-sonnet-4-5" />
+          </div>
+        </section>
+
+        <div class="save-row">
+          <button id="save-btn" class="btn btn-primary" type="submit">Save settings</button>
+          <span id="saved-confirmation" class="saved-confirmation" role="status" hidden>Saved</span>
+          <span id="save-error" class="save-error" role="alert" hidden></span>
+        </div>
+      </form>
+    </main>
+
+    <script type="module" src="options.js"></script>
+  </body>
+</html>

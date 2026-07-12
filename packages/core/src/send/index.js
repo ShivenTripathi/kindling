@@ -36,7 +36,7 @@ export function bytesToBase64(bytes) {
     const chunk = bytes.subarray(i, i + chunkSize);
     binary += String.fromCharCode.apply(null, chunk);
   }
-  // eslint-disable-next-line no-undef -- btoa is a browser/Node 18+ global
+   
   return btoa(binary);
 }
 

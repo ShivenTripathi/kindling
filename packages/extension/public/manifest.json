@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "Kindling — tabs to Kindle",
+  "version": "0.1.0",
+  "description": "Send tabs you left open for 48h+ to your Kindle as a clean EPUB digest. Everything runs locally.",
+  "minimum_chrome_version": "116",
+  "permissions": ["tabs", "storage", "alarms", "scripting", "identity", "offscreen"],
+  "optional_host_permissions": ["http://*/*", "https://*/*"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "Kindling",
+    "default_icon": {
+      "16": "icons/16.png",
+      "32": "icons/32.png"
+    }
+  },
+  "icons": {
+    "16": "icons/16.png",
+    "32": "icons/32.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
+  "options_page": "options/options.html",
+  "oauth2": {
+    "client_id": "REPLACE_WITH_YOUR_OAUTH_CLIENT_ID.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/gmail.send",
+      "https://www.googleapis.com/auth/userinfo.email"
+    ]
+  }
+}

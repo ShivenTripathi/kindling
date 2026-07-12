@@ -10,3 +10,6 @@ kindling-config.json
 ledger.json
 scratch/
 .claude/settings.local.json
+
+# Build artifacts
+packages/*/dist/

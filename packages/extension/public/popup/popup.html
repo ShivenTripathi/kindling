@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Kindling</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">🔥</span>
+        <span class="brand-name">Kindling</span>
+      </div>
+      <button id="settings-link" class="link-btn" type="button">Settings</button>
+    </header>
+
+    <main id="main">
+      <!-- ONBOARDING -->
+      <section id="onboarding-view" class="state onboarding" hidden>
+        <p class="ob-intro">
+          Kindling turns tabs you left open into a clean EPUB and emails it to
+          your Kindle. Nothing leaves your machine except that one email.
+        </p>
+
+        <div class="field">
+          <label for="ob-kindle-email">Your Send-to-Kindle address</label>
+          <input
+            id="ob-kindle-email"
+            type="email"
+            inputmode="email"
+            autocomplete="off"
+            placeholder="you@kindle.com"
+            aria-describedby="ob-kindle-hint"
+          />
+          <p id="ob-kindle-hint" class="hint">
+            Find it in Amazon's Content &amp; Devices → Preferences → Personal
+            Document Settings. Must end in <code>kindle.com</code>.
+          </p>
+        </div>
+
+        <div class="field">
+          <span class="field-label">Sender</span>
+          <div class="connect-row">
+            <button id="ob-connect" class="btn btn-secondary" type="button">
+              Connect Google (send-only)
+            </button>
+            <span id="ob-sender-email" class="sender-email" hidden></span>
+          </div>
+          <p class="hint">
+            This only grants permission to <strong>send</strong> mail as you —
+            Kindling can never read your inbox.
+          </p>
+        </div>
+
+        <p id="ob-error" class="error-text" role="alert" hidden></p>
+
+        <button id="ob-continue" class="btn btn-primary btn-block" type="button" disabled>
+          Get started
+        </button>
+      </section>
+
+      <!-- LOADING -->
+      <div id="loading-view" class="state" hidden>
+        <p>Checking your tabs…</p>
+      </div>
+
+      <!-- EMPTY -->
+      <div id="empty-view" class="state" hidden>
+        <p class="empty-title">You're all caught up.</p>
+        <p class="empty-sub">
+          Nothing's been open long enough yet — Kindling collects tabs once
+          they've sat idle past your threshold (48h by default).
+        </p>
+      </div>
+
+      <!-- MAIN LIST -->
+      <div id="list-view" hidden>
+        <div id="last-sent-banner" class="banner success-banner" hidden></div>
+        <div id="send-error-banner" class="banner error-banner" hidden>
+          <p id="send-error-message"></p>
+          <div class="banner-actions">
+            <button id="send-error-reconnect" class="btn btn-secondary btn-sm" type="button" hidden>
+              Reconnect Google
+            </button>
+            <button id="send-error-settings" class="btn btn-secondary btn-sm" type="button">
+              Open settings
+            </button>
+            <button id="send-error-dismiss" class="btn btn-text btn-sm" type="button">Dismiss</button>
+          </div>
+        </div>
+
+        <div class="list-header">
+          <label class="select-all">
+            <input type="checkbox" id="select-all" checked />
+            <span>Select all</span>
+          </label>
+          <span id="count-label" class="count-label"></span>
+        </div>
+
+        <ul id="tab-list" class="tab-list" role="list"></ul>
+      </div>
+    </main>
+
+    <footer id="footer" class="footer" hidden>
+      <label class="toggle">
+        <input type="checkbox" id="close-after-send" />
+        <span>Close tabs after sending</span>
+      </label>
+      <button id="send-btn" class="btn btn-primary" type="button" disabled>Send to Kindle</button>
+    </footer>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>
